@@ -1,4 +1,4 @@
-# Spring Boot ROI Calculator
+# Spring Boot ROI Calculator.
 
 A microservices-based ROI calculator with PDF and Excel export, Thymeleaf UI, and Swagger API.
 
