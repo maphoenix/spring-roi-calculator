@@ -1,16 +1,12 @@
 package com.example.roi.model;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class RoiRequest {
     private double batterySize = 17.5;
     private double usage = 4000;
     private double solarSize = 4.0;
-    private List<Tariff> tariffs = new ArrayList<>();
     
     public RoiRequest() {
-        // Empty constructor - tariffs will be populated by the service
+        // Empty constructor
     }
     
     public double getBatterySize() {
@@ -35,13 +31,5 @@ public class RoiRequest {
     
     public void setSolarSize(double solarSize) {
         this.solarSize = solarSize;
-    }
-    
-    public List<Tariff> getTariffs() {
-        return tariffs;
-    }
-    
-    public void setTariffs(List<Tariff> tariffs) {
-        this.tariffs = tariffs;
     }
 }

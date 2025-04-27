@@ -3,6 +3,7 @@ package com.example.roi.service;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.example.roi.model.RoiRequest;
@@ -25,10 +26,13 @@ public class RoiService {
     private static final double SOLAR_EXPORT_PERCENTAGE = 0.50;    // 50% of solar is exported
     private static final double GRID_EXPORT_EFFICIENCY = 0.60;     // 60% efficiency for exported power
 
+    @Autowired
+    private TariffService tariffService;
+
     /**
      * Calculate ROI savings for each tariff based on battery and solar parameters
      * 
-     * @param request Contains battery size, usage, solar size, and tariff information
+     * @param request Contains battery size, usage, and solar size information
      * @return Response containing total savings for each tariff
      */
     public RoiResponse calculate(RoiRequest request) {
@@ -45,13 +49,8 @@ public class RoiService {
 
         Map<String, Double> results = new HashMap<>();
         
-        // Add null check for tariffs list
-        if (request.getTariffs() == null) {
-            return new RoiResponse(results);
-        }
-        
-        // Calculate savings for each tariff
-        for (Tariff t : request.getTariffs()) {
+        // Get tariffs from TariffService
+        for (Tariff t : tariffService.getAvailableTariffs()) {
             // Step 3: Calculate battery savings (arbitrage between peak and off-peak rates)
             // Formula: Shiftable Energy × (Peak Rate - Offpeak Rate) × Battery Efficiency
             double batterySavings = shiftable * (t.getPeakRate() - t.getOffpeakRate()) * BATTERY_EFFICIENCY;

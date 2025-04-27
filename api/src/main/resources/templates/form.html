@@ -84,32 +84,7 @@
             margin-top: 10px;
             border-radius: 8px;
         }
-        #tariffDetails {
-            margin-top: 10px;
-        }
     </style>
-    <script>
-        function showTariffDetails() {
-            var select = document.getElementById('tariffSelect');
-            var selectedIndex = select.selectedIndex;
-            
-            // Hide all tariff detail sections
-            var tariffForms = document.getElementsByClassName('tariff-form');
-            for (var i = 0; i < tariffForms.length; i++) {
-                tariffForms[i].style.display = 'none';
-            }
-            
-            // Show the selected tariff section
-            if (selectedIndex >= 0) {
-                document.getElementById('tariff-' + selectedIndex).style.display = 'block';
-            }
-        }
-        
-        // Initialize on page load
-        window.onload = function() {
-            showTariffDetails();
-        };
-    </script>
 </head>
 <body>
 <div class="container">
@@ -131,48 +106,6 @@
         <div class="form-row">
             <label>Solar Size (kW):</label>
             <input type="number" step="0.1" th:field="*{solarSize}">
-        </div>
-
-        <h3>Tariffs</h3>
-        
-        <div class="form-row">
-            <label>Select Tariff to Edit:</label>
-            <select id="tariffSelect" onchange="showTariffDetails()">
-                <option th:each="tariff, stat : *{tariffs}" 
-                        th:value="${stat.index}" 
-                        th:text="${tariff.name}">Tariff Name</option>
-            </select>
-        </div>
-        
-        <div class="form-row">
-            <label>Compare With:</label>
-            <select th:field="*{tariffs[1]}" id="compareTariffSelect">
-                <option th:each="tariff : ${availableTariffs}" 
-                        th:value="${tariff}"
-                        th:text="${tariff.name}">Available Tariff</option>
-            </select>
-        </div>
-        
-        <div id="tariffDetails">
-            <!-- Dynamically generate tariff forms -->
-            <div th:each="tariff, stat : *{tariffs}" th:id="'tariff-' + ${stat.index}" class="tariff-form tariff-section" style="display: none;">
-                <div class="form-row">
-                    <label>Name:</label>
-                    <input type="text" th:field="*{tariffs[__${stat.index}__].name}">
-                </div>
-                <div class="form-row">
-                    <label>Peak Rate (p/kWh):</label>
-                    <input type="number" step="0.0001" th:field="*{tariffs[__${stat.index}__].peakRate}">
-                </div>
-                <div class="form-row">
-                    <label>Offpeak Rate (p/kWh):</label>
-                    <input type="number" step="0.0001" th:field="*{tariffs[__${stat.index}__].offpeakRate}">
-                </div>
-                <div class="form-row">
-                    <label>Export Rate (p/kWh):</label>
-                    <input type="number" step="0.0001" th:field="*{tariffs[__${stat.index}__].exportRate}">
-                </div>
-            </div>
         </div>
 
         <input type="submit" value="Calculate ROI">
