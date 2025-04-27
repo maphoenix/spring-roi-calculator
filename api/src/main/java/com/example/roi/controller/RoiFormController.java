@@ -2,6 +2,7 @@ package com.example.roi.controller;
 
 import com.example.roi.model.RoiRequest;
 import com.example.roi.model.RoiResponse;
+import com.example.roi.model.TimeSeriesData;
 import com.example.roi.model.UserProfile;
 import com.example.roi.service.RoiService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,15 @@ public class RoiFormController {
                                    RedirectAttributes redirectAttributes) {
         try {
             RoiResponse response = roiService.calculate(request);
+            
+            // Add the total savings to make existing views work
             redirectAttributes.addFlashAttribute("results", response.totalSavings);
+            
+            // Also add the time series data for future visualization enhancements
+            if (response.timeSeriesData != null) {
+                redirectAttributes.addFlashAttribute("timeSeriesData", response.timeSeriesData);
+            }
+            
             redirectAttributes.addFlashAttribute("request", request);
             redirectAttributes.addFlashAttribute("userProfile", userProfile);
             return "redirect:/roi/form";
