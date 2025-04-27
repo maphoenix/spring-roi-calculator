@@ -1,16 +1,14 @@
 package com.example.roi.controller;
 
+import com.example.roi.model.RoiRequest;
+import com.example.roi.model.RoiResponse;
+import com.example.roi.model.UserProfile;
+import com.example.roi.service.RoiService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-
-import com.example.roi.model.RoiRequest;
-import com.example.roi.model.RoiResponse;
-import com.example.roi.service.RoiService;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/roi")
@@ -20,25 +18,34 @@ public class RoiFormController {
     private RoiService roiService;
 
     @GetMapping("/form")
-    public String showForm(Model model) {
+    public String showDashboard(Model model) {
         if (!model.containsAttribute("request")) {
             model.addAttribute("request", new RoiRequest());
         }
         
-        return "form";
+        // Ensure there's a user profile
+        if (!model.containsAttribute("userProfile")) {
+            model.addAttribute("userProfile", new UserProfile());
+        }
+        
+        return "results";
     }
 
-    @PostMapping("/form")
-    public String handleFormSubmit(@ModelAttribute RoiRequest request, Model model) {
+    @PostMapping("/calculate")
+    public String handleCalculation(@ModelAttribute RoiRequest request, 
+                                   @ModelAttribute UserProfile userProfile,
+                                   RedirectAttributes redirectAttributes) {
         try {
             RoiResponse response = roiService.calculate(request);
-            model.addAttribute("results", response.totalSavings);
-            model.addAttribute("request", request);
-            return "form";
+            redirectAttributes.addFlashAttribute("results", response.totalSavings);
+            redirectAttributes.addFlashAttribute("request", request);
+            redirectAttributes.addFlashAttribute("userProfile", userProfile);
+            return "redirect:/roi/form";
         } catch (Exception e) {
-            model.addAttribute("error", "Error calculating ROI: " + e.getMessage());
-            model.addAttribute("request", request);
-            return "form";
+            redirectAttributes.addFlashAttribute("error", "Error calculating ROI: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("request", request);
+            redirectAttributes.addFlashAttribute("userProfile", userProfile);
+            return "redirect:/roi/form";
         }
     }
 }

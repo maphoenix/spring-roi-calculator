@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import com.example.roi.model.RoiRequest;
 import com.example.roi.model.RoiResponse;
 import com.example.roi.model.Tariff;
+import com.example.roi.model.UserProfile;
+import com.example.roi.model.UserProfile.HouseSize;
 
 /**
  * Service for calculating Return on Investment (ROI) for battery and solar installations
@@ -24,10 +26,56 @@ public class RoiService {
     private static final double SOLAR_GENERATION_FACTOR = 850.0;   // kWh per kW of solar annually
     private static final double SOLAR_SELF_USE_PERCENTAGE = 0.50;  // 50% of solar is used directly
     private static final double SOLAR_EXPORT_PERCENTAGE = 0.50;    // 50% of solar is exported
-    private static final double GRID_EXPORT_EFFICIENCY = 0.60;     // 60% efficiency for exported power
 
     @Autowired
     private TariffService tariffService;
+
+    /**
+     * Derives appropriate RoiRequest defaults based on the user's profile
+     * 
+     * @param userProfile Contains information about user's house and preferences
+     * @return RoiRequest with defaults populated based on user profile
+     */
+    public RoiRequest deriveRequestDefaults(UserProfile userProfile) {
+        RoiRequest request = new RoiRequest();
+        
+        // Set battery size based on house size
+        switch (userProfile.getHouseSize()) {
+            case SMALL:
+                request.setBatterySize(9.5);
+                request.setUsage(2500);
+                request.setSolarSize(3.0);
+                break;
+            case MEDIUM:
+                request.setBatterySize(17.5);
+                request.setUsage(4000);
+                request.setSolarSize(4.0);
+                break;
+            case LARGE:
+                request.setBatterySize(25.0);
+                request.setUsage(6000);
+                request.setSolarSize(6.0);
+                break;
+        }
+        
+        // Adjust for EV presence
+        if (userProfile.isHasOrPlanningEv()) {
+            request.setUsage(request.getUsage() + 2500); // Add estimated EV usage
+            
+            // Suggest a larger battery for EV owners if it's not already a large house
+            if (userProfile.getHouseSize() != HouseSize.LARGE) {
+                request.setBatterySize(Math.min(25.0, request.getBatterySize() * 1.5));
+            }
+        }
+        
+        // Adjust for home occupancy during the day
+        if (userProfile.isHomeOccupiedDuringDay()) {
+            // Higher self-consumption rate suggests more value from larger system
+            request.setSolarSize(request.getSolarSize() * 1.2);
+        }
+        
+        return request;
+    }
 
     /**
      * Calculate ROI savings for each tariff based on battery and solar parameters
@@ -45,7 +93,7 @@ public class RoiService {
         // Step 2: Calculate solar generation and usage components
         double solarGen = request.getSolarSize() * SOLAR_GENERATION_FACTOR;
         double solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
-        double solarExport = solarGen * SOLAR_EXPORT_PERCENTAGE * GRID_EXPORT_EFFICIENCY;
+        double solarExport = solarGen * SOLAR_EXPORT_PERCENTAGE;
 
         Map<String, Double> results = new HashMap<>();
         
