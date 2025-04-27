@@ -7,6 +7,7 @@ A microservices-based ROI calculator for solar and battery installations with ba
 ## Front-end:
 1. Have a form page for the default inputs
 2. Dashboard page for sending an API request to the spring service and tweakable inputs like the resources/templates/results.html
+  - Add a disclaimer as this is a guide only for approximate estimations and we use smart defaults, legal disclaimer.
 
 ## Back-end:
 2. Only return the Tarrifs that are relevant given the inputs for a user. I.e. if no Ev, exclude Intelligent Octopus Go
