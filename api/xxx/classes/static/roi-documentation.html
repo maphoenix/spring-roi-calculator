@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROI Calculator - Documentation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .formula {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .example {
+            background-color: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .calculation-diagram {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 30px 0;
+        }
+        .calculation-box {
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            text-align: center;
+            width: 80%;
+        }
+        .parameters {
+            background-color: #e3f2fd;
+        }
+        .formula-box {
+            background-color: #fff8e1;
+        }
+        .result-box {
+            background-color: #e8f5e9;
+        }
+        .arrow {
+            font-size: 24px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>ROI Calculator - Documentation</h1>
+    
+    <p>
+        This documentation explains the methodology used to calculate Return on Investment (ROI) 
+        for battery storage and solar installations across different electricity tariffs.
+    </p>
+
+    <h2>Core Calculation Parameters</h2>
+    
+    <table>
+        <tr>
+            <th>Parameter</th>
+            <th>Default Value</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td>Battery Size</td>
+            <td>17.5 kWh</td>
+            <td>Total capacity of the battery system</td>
+        </tr>
+        <tr>
+            <td>Usable Battery</td>
+            <td>90%</td>
+            <td>Percentage of battery capacity that is usable (to preserve battery health)</td>
+        </tr>
+        <tr>
+            <td>Annual Usage</td>
+            <td>4000 kWh</td>
+            <td>Total annual electricity consumption</td>
+        </tr>
+        <tr>
+            <td>Solar Size</td>
+            <td>4.0 kW</td>
+            <td>Size of the solar PV system</td>
+        </tr>
+        <tr>
+            <td>Solar Generation</td>
+            <td>850 kWh/kW</td>
+            <td>Annual generation per kW of installed solar capacity</td>
+        </tr>
+        <tr>
+            <td>Solar Self-Use</td>
+            <td>50%</td>
+            <td>Percentage of generated solar power used directly</td>
+        </tr>
+        <tr>
+            <td>Solar Export</td>
+            <td>50%</td>
+            <td>Percentage of generated solar power exported</td>
+        </tr>
+        <tr>
+            <td>Grid Export Efficiency</td>
+            <td>60%</td>
+            <td>Efficiency factor for exported power (accounting for losses)</td>
+        </tr>
+        <tr>
+            <td>Battery Efficiency</td>
+            <td>85%</td>
+            <td>Round-trip efficiency of battery storage system</td>
+        </tr>
+    </table>
+
+    <h2>Calculation Method</h2>
+
+    <h3>1. Battery Savings Calculation</h3>
+    
+    <div class="calculation-diagram">
+        <div class="calculation-box parameters">
+            <strong>Input Parameters</strong>
+            <p>Battery Size, Usable Percentage, Annual Usage, Battery Efficiency, Peak Rate, Off-peak Rate</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box formula-box">
+            <strong>Step 1: Calculate Usable Battery Capacity</strong>
+            <div class="formula">Usable Battery Capacity = Battery Size × Usable Percentage</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box formula-box">
+            <strong>Step 2: Calculate Shiftable Energy</strong>
+            <div class="formula">Shiftable Energy = MIN(Usable Battery Capacity × 365, Annual Usage)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box formula-box">
+            <strong>Step 3: Calculate Battery Savings</strong>
+            <div class="formula">Battery Savings = Shiftable Energy × (Peak Rate - Offpeak Rate) × Battery Efficiency</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box result-box">
+            <strong>Result: Annual Battery Savings (£)</strong>
+        </div>
+    </div>
+
+    <p>
+        This represents the savings from charging the battery during off-peak hours and using 
+        that energy during peak hours, accounting for battery efficiency losses.
+    </p>
+
+    <h3>2. Solar Savings Calculation</h3>
+    
+    <div class="calculation-diagram">
+        <div class="calculation-box parameters">
+            <strong>Input Parameters</strong>
+            <p>Solar Size, Solar Generation Factor, Self-Use Percentage, Export Percentage, Export Efficiency, Peak Rate, Export Rate</p>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box formula-box">
+            <strong>Step 1: Calculate Annual Solar Generation</strong>
+            <div class="formula">Annual Solar Generation = Solar Size × Solar Generation Factor</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box formula-box">
+            <strong>Step 2: Calculate Solar Usage and Export</strong>
+            <div class="formula">Solar Self-Used = Annual Solar Generation × Self-Use Percentage</div>
+            <div class="formula">Solar Exported = Annual Solar Generation × Export Percentage × Export Efficiency</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box formula-box">
+            <strong>Step 3: Calculate Solar Savings</strong>
+            <div class="formula">Solar Savings = (Solar Self-Used × Peak Rate) + (Solar Exported × Export Rate)</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="calculation-box result-box">
+            <strong>Result: Annual Solar Savings (£)</strong>
+        </div>
+    </div>
+
+    <p>
+        This represents savings from:
+        <ul>
+            <li>Using self-generated solar power instead of buying from the grid</li>
+            <li>Selling excess solar power back to the grid</li>
+        </ul>
+    </p>
+
+    <h3>3. Total ROI Calculation</h3>
+    
+    <div class="calculation-diagram">
+        <div class="calculation-box formula-box">
+            <strong>Total Annual Savings</strong>
+            <div class="formula">Total Savings = Battery Savings + Solar Savings</div>
+        </div>
+    </div>
+
+    <h2>Example Calculation</h2>
+    
+    <div class="example">
+        <h3>Using the Intelligent Octopus Go tariff</h3>
+        <ul>
+            <li>Peak Rate: 27.71p/kWh</li>
+            <li>Off-peak Rate: 7.5p/kWh</li>
+            <li>Export Rate: 15p/kWh</li>
+        </ul>
+
+        <h4>Battery Savings:</h4>
+        <ol>
+            <li>Usable Battery: 17.5 kWh × 0.90 = 15.75 kWh</li>
+            <li>Shiftable Energy: MIN(15.75 × 365, 4000) = 4000 kWh (limited by annual usage)</li>
+            <li>Battery Savings: 4000 × (0.2771 - 0.075) × 0.85 = £689.35</li>
+        </ol>
+
+        <h4>Solar Savings:</h4>
+        <ol>
+            <li>Solar Generation: 4.0 kW × 850 = 3400 kWh</li>
+            <li>Solar Self-Used: 3400 × 0.5 = 1700 kWh</li>
+            <li>Solar Exported: 3400 × 0.5 × 0.6 = 1020 kWh</li>
+            <li>Solar Savings: (1700 × 0.2771) + (1020 × 0.15) = £624.07</li>
+        </ol>
+
+        <h4>Total Annual Savings:</h4>
+        <p>£689.35 + £624.07 = £1,313.42</p>
+    </div>
+
+    <h2>Notes and Limitations</h2>
+    
+    <ol>
+        <li>Calculations are simplified estimates and actual savings may vary based on:
+            <ul>
+                <li>Seasonal variations in consumption and generation</li>
+                <li>Actual usage patterns</li>
+                <li>Weather conditions affecting solar generation</li>
+                <li>Battery degradation over time</li>
+                <li>Changes in tariff rates</li>
+            </ul>
+        </li>
+        <li>The model assumes consistent daily/annual usage and doesn't account for:
+            <ul>
+                <li>Weekend vs. weekday differences</li>
+                <li>Seasonal variations in generation and consumption</li>
+                <li>Detailed time-of-use patterns</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h2>Further Reading</h2>
+    <p>
+        For more detailed information on the calculation methodology, please refer to the 
+        <a href="https://github.com/yourusername/spring-roi-calculator/blob/main/calculations.md">calculations.md</a> 
+        file in the project repository.
+    </p>
+
+    <hr>
+    <p><a href="/">Return to the ROI Calculator</a></p>
+</body>
+</html> 

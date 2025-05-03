@@ -1,0 +1,9 @@
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/model/RoiRequest.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/RoiApplication.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/model/TimeSeriesData.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/model/RoiResponse.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/model/UserProfile.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/model/Tariff.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/service/RoiService.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/service/TariffService.java
+/Users/markphoenix/Desktop/projects/spring-roi-calculator/api/src/main/java/com/example/roi/controller/RoiApiController.java
