@@ -4,14 +4,15 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ## Tasks:
 
-## Front-end:
+### Front-end:
 
-1. Have a form page for the default inputs
-2. Dashboard page for sending an API request to the spring service and tweakable inputs like the resources/templates/results.html
+- Tooltip for inputs i.e. Have / will get EV, Home during work hours, etc.
+
+2. Multi step form for dummies, i.e. people that are not technical, which will populate the inputs for the http://localhost:3000/ page using query params, these will to the server if there are query params.
 
 - Add a disclaimer as this is a guide only for approximate estimations and we use smart defaults, legal disclaimer.
 
-## Back-end:
+### Back-end:
 
 ROI Service Changes
 
