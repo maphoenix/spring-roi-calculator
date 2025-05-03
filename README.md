@@ -21,7 +21,7 @@ A microservices-based ROI calculator for solar and battery installations with ba
    2.4 Is there something in tax releief, as the user would not have to pay taxable money in the future? But technically they stil have to get taxed to buy the solar? Or taxed if they are given the money?
    2.4 Borrowing vs cash buy for solar + batteries?
 4. Lost opportunity cost, if they had invested the money in an SPY index at an assumed growth rate what would they have made? Please take inflation into account.
-5. http://localhost:8080/documentation clicking this should load target="\_blank" as an <a> text link rather than redirecting
+5. http://localhost:8080/documentation clicking this should load target="\_blank" as an <a> text link rather than redirecting </a>
 
 ## Project Structure
 
