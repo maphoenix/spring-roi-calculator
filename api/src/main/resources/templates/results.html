@@ -250,18 +250,6 @@
             </div>
             
             <div class="assumption-item">
-                <h4>Tax Bracket</h4>
-                <div class="assumption-value" th:text="${
-                    userProfile.taxBracket == T(com.example.roi.model.UserProfile.TaxBracket).TWENTY_PERCENT ? '20%' : 
-                    userProfile.taxBracket == T(com.example.roi.model.UserProfile.TaxBracket).FORTY_PERCENT ? '40%' : 
-                    'Not specified'
-                }">20%</div>
-                <div class="assumption-edit">
-                    <a href="#" class="edit-link" onclick="openModal('taxModal')">Change</a>
-                </div>
-            </div>
-            
-            <div class="assumption-item">
                 <h4>Home Occupancy</h4>
                 <div class="assumption-value" th:text="${userProfile.homeOccupiedDuringDay ? 'Occupied during day' : 'Empty during work hours'}">Empty during work hours</div>
                 <div class="assumption-edit">
@@ -361,26 +349,6 @@
                 <select name="value">
                     <option value="true" th:selected="${userProfile.hasOrPlanningEv}">Yes, I have or plan to get an EV</option>
                     <option value="false" th:selected="${!userProfile.hasOrPlanningEv}">No EV plans at this time</option>
-                </select>
-            </div>
-            <input type="submit" value="Update" class="update-btn">
-        </form>
-    </div>
-</div>
-
-<!-- Tax Bracket Modal -->
-<div id="taxModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeModal('taxModal')">&times;</span>
-        <h3>Change Tax Bracket</h3>
-        <form th:action="@{/profile-update}" method="post">
-            <input type="hidden" name="field" value="taxBracket">
-            <div class="form-row">
-                <label>Tax Bracket:</label>
-                <select name="value">
-                    <option value="TWENTY_PERCENT" th:selected="${userProfile.taxBracket == T(com.example.roi.model.UserProfile.TaxBracket).TWENTY_PERCENT}">20% Tax Rate</option>
-                    <option value="FORTY_PERCENT" th:selected="${userProfile.taxBracket == T(com.example.roi.model.UserProfile.TaxBracket).FORTY_PERCENT}">40% Tax Rate</option>
-                    <option value="PREFER_NOT_TO_SAY" th:selected="${userProfile.taxBracket == T(com.example.roi.model.UserProfile.TaxBracket).PREFER_NOT_TO_SAY}">Prefer not to say</option>
                 </select>
             </div>
             <input type="submit" value="Update" class="update-btn">
