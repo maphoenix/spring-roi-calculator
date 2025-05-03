@@ -21,13 +21,13 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ROI Service Changes
 
-- Pull the real tarriffs 
+- Pull the real tariffs 
 - Fix EV tarrif vs non EV
 - Fix Home During Work Hours
 - Fix Need Finance (i.e. cash vs borrow)
 - Inflation factor
 - Set up IP rate limiting
-- DDOS protection using cloud flare
+- DDOS protection using cloudflare
 
 ## Project Structure
 
