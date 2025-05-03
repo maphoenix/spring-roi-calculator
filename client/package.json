@@ -1,0 +1,28 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@tanstack/react-router": "^1.117.1",
+    "@tanstack/react-start": "^1.118.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "vinxi": "^0.5.6"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.8.3",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
