@@ -49,6 +49,8 @@ cd api
 mvn clean package
 ```
 
+# All in one
+mvn clean package; if [ $? -eq 0 ]; then mvn spring-boot:run; fi
 ### Running the Application
 
 **1. Run the Backend API**
