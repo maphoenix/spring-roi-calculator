@@ -36,8 +36,8 @@ public class RoiService {
     private static final double SOLAR_GENERATION_FACTOR = 850.0;   // kWh per kW of solar annually
     private static final double SOLAR_SELF_USE_PERCENTAGE = 0.50;  // 50% of solar is used directly
     private static final double SOLAR_EXPORT_PERCENTAGE = 0.50;    // 50% of solar is exported
-    private static final double AT_HOME_SOLAR_EXPORT_PERCENTAGE = 0.70;    // 70% of solar is exported
-    private static final double AT_HOME_SOLAR_SELF_USE_PERCENTAGE = 0.30;  // 30% of solar is used directly
+    private static final double AT_HOME_SOLAR_EXPORT_PERCENTAGE = 0.30;    // 30% of solar is exported
+    private static final double AT_HOME_SOLAR_SELF_USE_PERCENTAGE = 0.70;  // 70% of solar is used directly
     private static final int MAX_BATTERY_YEARS = 15;               // Maximum battery lifespan in years
     private static final double BATTERY_YEAR_10_CAPACITY = 0.70;   // Battery at 70% capacity after 10 years
 
@@ -106,12 +106,12 @@ public class RoiService {
         double actualSolarGeneration = SOLAR_GENERATION_FACTOR * getSolarDirectionOutputMultiplier(request.getSolarPanelDirection());
         double solarGen = request.getSolarSize() * actualSolarGeneration;
 
-        double solarUsed = 0;
-        double solarExport = 0;
+        double solarUsed;
+        double solarExport;
        
-        if (request.homeOccupancyDuringWorkHours() == true) {
-            solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
-            solarExport = 0;
+        if (request.isHomeOccupancyDuringWorkHours() == true) {
+            solarUsed = solarGen * AT_HOME_SOLAR_SELF_USE_PERCENTAGE;
+            solarExport = solarGen * AT_HOME_SOLAR_EXPORT_PERCENTAGE;
         } else {
             solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
             solarExport = solarGen * SOLAR_EXPORT_PERCENTAGE;
@@ -228,22 +228,13 @@ public class RoiService {
      */
     public static double getSolarDirectionOutputMultiplier(RoiRequest.CardinalDirection direction) {
         if (direction == null) return 1.0;
-        switch (direction) {
-            case SOUTH:
-                return 1.0;
-            case SOUTH_EAST:
-            case SOUTH_WEST:
-                return 0.97;
-            case EAST:
-            case WEST:
-                return 0.83;
-            case NORTH_EAST:
-            case NORTH_WEST:
-                return 0.73;
-            case NORTH:
-                return 0.63;
-            default:
-                return 1.0;
-        }
+        return switch (direction) {
+            case SOUTH -> 1.0;
+            case SOUTH_EAST, SOUTH_WEST -> 0.97;
+            case EAST, WEST -> 0.83;
+            case NORTH_EAST, NORTH_WEST -> 0.73;
+            case NORTH -> 0.63;
+            default -> 1.0;
+        };
     }
 }
