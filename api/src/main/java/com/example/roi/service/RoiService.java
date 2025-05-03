@@ -101,7 +101,8 @@ public class RoiService {
 
         // Solar generation and usage components (constant over years)
         // NOTE: Solar direction and other request parameters are not yet used in this simplified calculation
-        double solarGen = request.getSolarSize() * SOLAR_GENERATION_FACTOR;
+        double actualSolarGeneration = SOLAR_GENERATION_FACTOR * getSolarDirectionOutputMultiplier(request.getSolarPanelDirection());
+        double solarGen = request.getSolarSize() * actualSolarGeneration;
         double solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
         double solarExport = solarGen * SOLAR_EXPORT_PERCENTAGE;
 
@@ -205,5 +206,33 @@ public class RoiService {
                 roiChartData,
                 roiPercentage
         );
+    }
+
+    /**
+     * Returns the typical output multiplier for a given solar panel direction.
+     * Multiplier is relative to south-facing (1.0 = 100% of optimal output).
+     *
+     * @param direction The cardinal direction the panels face
+     * @return Output multiplier (e.g., 1.0 for south, 0.8 for east/west, etc.)
+     */
+    public static double getSolarDirectionOutputMultiplier(RoiRequest.CardinalDirection direction) {
+        if (direction == null) return 1.0;
+        switch (direction) {
+            case SOUTH:
+                return 1.0;
+            case SOUTH_EAST:
+            case SOUTH_WEST:
+                return 0.97;
+            case EAST:
+            case WEST:
+                return 0.83;
+            case NORTH_EAST:
+            case NORTH_WEST:
+                return 0.73;
+            case NORTH:
+                return 0.63;
+            default:
+                return 1.0;
+        }
     }
 }
