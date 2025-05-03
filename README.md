@@ -4,22 +4,27 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ## Tasks:
 
+- Pick a domain name and register it
+- Add a logo
+- Add a favicon
+- Deploy it
+- Add a header with a navigation bar
+- Footer with links to privacy policy, terms of service, and contact us
+
 ### Front-end:
 
-- Tooltip for inputs i.e. Have / will get EV, Home during work hours, etc.
-
-2. Multi step form for dummies, i.e. people that are not technical, which will populate the inputs for the http://localhost:3000/ page using query params, these will to the server if there are query params.
-
-- Add a disclaimer as this is a guide only for approximate estimations and we use smart defaults, legal disclaimer.
+- Add Google Tag Manager
+- Add Google Analytics
+- Add Google Search Console
 
 ### Back-end:
 
 ROI Service Changes
 
-- Fix Solar Panel direction
 - Fix EV Taffic vs non EV
 - Fix Home During Work Hours
 - Fix Need Finance (i.e. cash vs borrow)
+- Inflation factor
 
 ## Project Structure
 
