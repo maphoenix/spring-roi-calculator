@@ -36,6 +36,8 @@ public class RoiService {
     private static final double SOLAR_GENERATION_FACTOR = 850.0;   // kWh per kW of solar annually
     private static final double SOLAR_SELF_USE_PERCENTAGE = 0.50;  // 50% of solar is used directly
     private static final double SOLAR_EXPORT_PERCENTAGE = 0.50;    // 50% of solar is exported
+    private static final double AT_HOME_SOLAR_EXPORT_PERCENTAGE = 0.70;    // 70% of solar is exported
+    private static final double AT_HOME_SOLAR_SELF_USE_PERCENTAGE = 0.30;  // 30% of solar is used directly
     private static final int MAX_BATTERY_YEARS = 15;               // Maximum battery lifespan in years
     private static final double BATTERY_YEAR_10_CAPACITY = 0.70;   // Battery at 70% capacity after 10 years
 
@@ -103,8 +105,17 @@ public class RoiService {
         // NOTE: Solar direction and other request parameters are not yet used in this simplified calculation
         double actualSolarGeneration = SOLAR_GENERATION_FACTOR * getSolarDirectionOutputMultiplier(request.getSolarPanelDirection());
         double solarGen = request.getSolarSize() * actualSolarGeneration;
-        double solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
-        double solarExport = solarGen * SOLAR_EXPORT_PERCENTAGE;
+
+        double solarUsed = 0;
+        double solarExport = 0;
+       
+        if (request.homeOccupancyDuringWorkHours() == true) {
+            solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
+            solarExport = 0;
+        } else {
+            solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
+            solarExport = solarGen * SOLAR_EXPORT_PERCENTAGE;
+        }
 
         logger.info("Solar generation: {}kWh, self-used: {}kWh, exported: {}kWh",
                 String.format("%.2f", solarGen),

@@ -5,6 +5,7 @@ public class Tariff {
     private double peakRate;
     private double offpeakRate;
     private double exportRate;
+    private boolean evRequired = false;
     
     public Tariff() {
         // Default constructor
@@ -47,5 +48,19 @@ public class Tariff {
     
     public void setExportRate(double exportRate) {
         this.exportRate = exportRate;
+    }
+
+    /**
+     * Returns true if this tariff requires an EV (electric vehicle).
+     */
+    public boolean isEvRequired() {
+        return evRequired;
+    }
+
+    /**
+     * Sets whether this tariff requires an EV (electric vehicle).
+     */
+    public void setEvRequired(boolean evRequired) {
+        this.evRequired = evRequired;
     }
 }

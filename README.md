@@ -21,7 +21,8 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ROI Service Changes
 
-- Fix EV Taffic vs non EV
+- Pull the real tarriffs 
+- Fix EV tarrif vs non EV
 - Fix Home During Work Hours
 - Fix Need Finance (i.e. cash vs borrow)
 - Inflation factor
