@@ -13,22 +13,22 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ## Back-end:
 
-2. Only return the Tarrifs that are relevant given the inputs for a user. I.e. if no Ev, exclude Intelligent Octopus Go
-3. ROI Service: Enrich the time series data, so that you have yearly plots
-   2.1 Double check the ROI service, because if you have no EV tariff but if you have only battery, this should be a loss leader.
-   2.2 Change the RoiService so that you can say with a piece of text at the top + visualisations, what the breakeven year is. And how much profit they will make before the batteries + solar need replacing.
-   2.3 Is there something to penalise not having solar because you get the same output but it's inflation proof?
-   2.4 Is there something in tax releief, as the user would not have to pay taxable money in the future? But technically they stil have to get taxed to buy the solar? Or taxed if they are given the money?
-   2.4 Borrowing vs cash buy for solar + batteries?
-4. Lost opportunity cost, if they had invested the money in an SPY index at an assumed growth rate what would they have made? Please take inflation into account.
-5. http://localhost:8080/documentation clicking this should load target="\_blank" as an <a> text link rather than redirecting </a>
+ROI Service Changes
+
+- Fix Solar Panel direction
+- Fix EV Taffic vs non EV
+- Fix Home During Work Hours
+- Fix Need Finance (i.e. cash vs borrow)
 
 ## Project Structure
 
 - `/api` - Spring Boot backend service
-  - Source code, resources, and Maven configuration
-  - REST API endpoints and business logic
-  - Battery degradation modeling and ROI time series calculation
+  - Contains the Java source code (`src/main/java`), resources (`src/main/resources`), and Maven configuration (`pom.xml`).
+  - Implements the REST API endpoints, business logic for ROI calculation, battery degradation modeling, and tariff management.
+- `/client` - Frontend application (React + Vite)
+  - Built using [TanStack Start](https://tanstack.com/start/v0), a Vite-based React framework.
+  - Contains the user interface components (`app/components`), routes (`app/routes`), types (`app/types`), and static assets.
+  - Handles user input via forms and displays the calculated ROI results using charts and scorecards.
 
 ## Requirements
 
@@ -57,8 +57,11 @@ cd .. # Go back to root directory
 ```
 
 # All in one
+
 mvn clean package; if [ $? -eq 0 ]; then mvn spring-boot:run; fi
+
 ### Running the Application
+
 ### Running the Application for Development
 
 To run the application for development, you need to start both the backend API and the frontend client simultaneously in separate terminal windows.
