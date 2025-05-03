@@ -34,66 +34,66 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 - Java 17
 - Maven 3.6+
+- Node.js (including npm) for the frontend client
 
 ## How to Build and Run
 
 ### Building the Application
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/spring-roi-calculator.git
-cd spring-roi-calculator
+# Clone the repository (if you haven't already)
+# git clone https://github.com/yourusername/spring-roi-calculator.git
+# cd spring-roi-calculator
 
-# Build the API
+# Build the API (Optional, as spring-boot:run compiles)
 cd api
 mvn clean package
+cd .. # Go back to root directory
+
+# Install frontend dependencies
+cd client
+npm install
+cd .. # Go back to root directory
 ```
 
-### Running the Application
+### Running the Application for Development
 
-**1. Run the Backend API**
+To run the application for development, you need to start both the backend API and the frontend client simultaneously in separate terminal windows.
 
-Open a terminal and navigate to the `api` directory:
+**1. Run the Backend API (Spring Boot)**
+
+Open your first terminal, navigate to the project's root directory, and then into the `api` directory:
 
 ```bash
-# Navigate to the API directory
 cd api
 
-# Run the API using Maven
+# Run the API using the Spring Boot Maven plugin
+# This automatically handles compilation and starts the server
 mvn spring-boot:run
-
-# Or run the JAR file directly if already built
-# java -jar target/roi-calculator-1.0.0.jar
 ```
 
-The backend API will start on http://localhost:8080.
+The backend API will start, typically on `http://localhost:8080`. Check the terminal output for confirmation.
 
-**2. Run the Frontend Client**
+**2. Run the Frontend Client (React/Vite)**
 
-Open a _separate_ terminal and navigate to the `client` directory:
+Open a _second, separate_ terminal window. Navigate to the project's root directory, and then into the `client` directory:
 
 ```bash
-# Navigate to the Client directory from the project root
-cd ../client
-# Or if you are still in the api directory: cd ../client
-
-# Install dependencies (if you haven't already)
-npm install
-# or yarn install
+cd client
 
 # Start the client development server
 npm run dev
-# or yarn dev
 ```
 
-The frontend client will typically start on http://localhost:3000 (check the terminal output for the exact URL).
+The frontend client development server will start, typically on `http://localhost:3000`. Check the terminal output for the exact URL.
 
 ### Accessing the Application
 
-- Web Interface: http://localhost:8080/roi/form
-- User Profile Form: http://localhost:8080/
-- API Documentation: http://localhost:8080/swagger-ui.html
-- Time Series Data API: http://localhost:8080/api/roi/timeseries
+Once both the backend and frontend are running:
+
+- **Access the React Frontend:** Open your web browser and go to the URL provided by the frontend development server (usually `http://localhost:3000`). This is the main interface you will interact with.
+- **API Documentation (Swagger):** If needed, you can access the backend API documentation directly at `http://localhost:8080/swagger-ui.html`.
+- **Backend API endpoints:** The frontend will automatically make requests to `http://localhost:8080/api/...` thanks to the CORS configuration and the Axios client setup.
 
 ## Features
 

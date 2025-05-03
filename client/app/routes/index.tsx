@@ -1,48 +1,25 @@
 // app/routes/index.tsx
-import * as fs from "node:fs";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { createFileRoute } from "@tanstack/react-router";
 import { ScoreCard } from "@/components/custom/score-card";
 import { RoiChart } from "@/components/custom/roi-chart";
 import { RoiInputForm } from "@/components/custom/roi-input-form";
-import {
-  mockMonthlySavings,
-  mockYearlySavings,
-  mockPaybackPeriod,
-  mockRoiChartData,
-  mockRoiPercentage,
-  mockTotalCost,
-} from "@/lib/mock-data";
-
-const filePath = "count.txt";
-
-async function readCount() {
-  return parseInt(
-    await fs.promises.readFile(filePath, "utf-8").catch(() => "0")
-  );
-}
-
-const getCount = createServerFn({
-  method: "GET",
-}).handler(() => {
-  return readCount();
-});
-
-const updateCount = createServerFn({ method: "POST" })
-  .validator((d: number) => d)
-  .handler(async ({ data }) => {
-    const count = await readCount();
-    await fs.promises.writeFile(filePath, `${count + data}`);
-  });
+import type { RoiCalculationResponse } from "@/types/roi-api-response-types";
 
 export const Route = createFileRoute("/")({
   component: IndexComponent,
 });
 
 function IndexComponent() {
+  const [results, setResults] = useState<RoiCalculationResponse | null>(null);
+
+  const handleCalculationSuccess = (data: RoiCalculationResponse) => {
+    console.log("Received calculation results in index:", data);
+    setResults(data);
+  };
+
   const formatCurrency = (amount: number, _currency: string) => {
-    // Always use £ symbol for GBP
-    return `£${amount.toLocaleString()}`;
+    return `£${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
@@ -52,59 +29,78 @@ function IndexComponent() {
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Input Form */}
         <div className="lg:col-span-1">
-          <RoiInputForm />
+          <RoiInputForm onCalculationSuccess={handleCalculationSuccess} />
         </div>
 
-        {/* Right Column: Dashboard Results */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Score Cards Row - Adjusted for 5 cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4">
-            {/* Added Total Cost Card (first) */}
             <ScoreCard
               title="Total System Cost"
-              value={formatCurrency(
-                mockTotalCost.amount,
-                mockTotalCost.currency
-              )}
+              value={
+                results
+                  ? formatCurrency(
+                      results.totalCost.amount,
+                      results.totalCost.currency
+                    )
+                  : "--"
+              }
             />
-            {/* <ScoreCard
-              title="Monthly Savings"
-              value={formatCurrency(
-                mockMonthlySavings.amount,
-                mockMonthlySavings.currency
-              )}
-            /> */}
             <ScoreCard
               title="Yearly Savings"
-              value={formatCurrency(
-                mockYearlySavings.amount,
-                mockYearlySavings.currency
-              )}
+              value={
+                results
+                  ? formatCurrency(
+                      results.yearlySavings.amount,
+                      results.yearlySavings.currency
+                    )
+                  : "--"
+              }
             />
             <ScoreCard
               title="Payback Period"
-              value={`${mockPaybackPeriod.years} Years`}
+              value={
+                results
+                  ? `${results.paybackPeriod.years < 0 ? ">15" : results.paybackPeriod.years} Years`
+                  : "--"
+              }
             />
-            {/* New ROI Percentage Card */}
             <ScoreCard
-              title={`ROI (${mockRoiPercentage.periodYears} Years)`}
-              value={`${mockRoiPercentage.percentage}%`}
+              title={`ROI (${results ? results.roiPercentage.periodYears : "--"} Years)`}
+              value={
+                results
+                  ? `${results.roiPercentage.percentage.toFixed(1)}%`
+                  : "--"
+              }
             />
           </div>
 
-          {/* Chart Section */}
           <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm">
             <h2 className="text-xl font-semibold mb-4 text-center">
               Cumulative Savings Over Time
             </h2>
-            <RoiChart chartData={mockRoiChartData} />
-            {mockRoiChartData.breakEvenYear && (
-              <p className="text-sm text-muted-foreground mt-4 text-center">
-                Estimated break-even point around year{" "}
-                {mockRoiChartData.breakEvenYear}.
-              </p>
+            {results ? (
+              <>
+                <RoiChart chartData={results.roiChartData} />
+                {results.roiChartData.breakEvenYear !== null &&
+                  results.roiChartData.breakEvenYear > 0 && (
+                    <p className="text-sm text-muted-foreground mt-4 text-center">
+                      Estimated break-even point around year{" "}
+                      {results.roiChartData.breakEvenYear}.
+                    </p>
+                  )}
+                {results.roiChartData.breakEvenYear !== null &&
+                  results.roiChartData.breakEvenYear < 0 && (
+                    <p className="text-sm text-muted-foreground mt-4 text-center">
+                      Payback period is longer than the system lifespan (
+                      {results.roiPercentage.periodYears} years).
+                    </p>
+                  )}
+              </>
+            ) : (
+              <div className="text-center text-muted-foreground py-10">
+                Enter your details and click "Calculate ROI" to see the results.
+              </div>
             )}
           </div>
         </div>
