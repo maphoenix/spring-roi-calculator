@@ -26,6 +26,8 @@ ROI Service Changes
 - Fix Home During Work Hours
 - Fix Need Finance (i.e. cash vs borrow)
 - Inflation factor
+- Set up IP rate limiting
+- DDOS protection using cloud flare
 
 ## Project Structure
 
