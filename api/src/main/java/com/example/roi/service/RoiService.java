@@ -133,8 +133,19 @@ public class RoiService {
             // For now, returning null, but this should be handled more gracefully
             return null; // Or throw new IllegalStateException("No tariffs configured");
         }
-        Tariff selectedTariff = tariffs.get(0); // Using the first available tariff
-        logger.info("Using tariff for calculation: {}", selectedTariff.getName());
+
+        // Select tariff based on EV status
+        final boolean needsEvTariff = request.isHaveOrWillGetEv();
+        Tariff selectedTariff = tariffs.stream()
+                .filter(tariff -> tariff.isEvRequired() == needsEvTariff)
+                .findFirst()
+                .orElseThrow(() -> {
+                    String message = String.format("No suitable tariff found for EV status: %s", needsEvTariff);
+                    logger.error(message);
+                    return new IllegalStateException(message);
+                });
+
+        logger.info("Using tariff for calculation: {} (EV Tariff: {})", selectedTariff.getName(), selectedTariff.isEvRequired());
 
         // --- Year-by-Year Calculation for the selected tariff ---
         List<Double> yearlySavingsList = new ArrayList<>();
@@ -230,14 +241,22 @@ public class RoiService {
      * @return Output multiplier (e.g., 1.0 for south, 0.8 for east/west, etc.)
      */
     public static double getSolarDirectionOutputMultiplier(RoiRequest.CardinalDirection direction) {
-        if (direction == null) return 1.0;
+        if (direction == null) {
+            return 1.0;
+        }
         return switch (direction) {
-            case SOUTH -> 1.0;
-            case SOUTH_EAST, SOUTH_WEST -> 0.97;
-            case EAST, WEST -> 0.83;
-            case NORTH_EAST, NORTH_WEST -> 0.73;
-            case NORTH -> 0.63;
-            default -> 1.0;
+            case SOUTH ->
+                1.0;
+            case SOUTH_EAST, SOUTH_WEST ->
+                0.97;
+            case EAST, WEST ->
+                0.83;
+            case NORTH_EAST, NORTH_WEST ->
+                0.73;
+            case NORTH ->
+                0.63;
+            default ->
+                1.0;
         };
     }
 }

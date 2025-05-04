@@ -46,15 +46,11 @@ const directions: CardinalDirection[] = [
 interface RoiInputFormProps {
   formData: SolarRoiCalculatorParams; // Receive current form data
   onFormDataChange: (newData: SolarRoiCalculatorParams) => void; // Callback to update parent state
-  onCalculate: (formData: SolarRoiCalculatorParams) => void; // Callback to trigger calculation in parent
-  isCalculating: boolean; // Receive loading state from parent
 }
 
 export function RoiInputForm({
   formData,
   onFormDataChange,
-  onCalculate,
-  isCalculating,
 }: RoiInputFormProps) {
   // Local state now mirrors the formData prop
   const [formState, setFormState] =
@@ -94,13 +90,6 @@ export function RoiInputForm({
     onFormDataChange(newState); // Inform parent of the change
   };
 
-  // Handle form submission - now calls the onCalculate prop
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    console.log("Triggering recalculation with form data:", formState);
-    onCalculate(formState);
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -111,7 +100,7 @@ export function RoiInputForm({
       </CardHeader>
       <CardContent>
         <TooltipProvider>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form className="space-y-4">
             <div className="space-y-2">
               <div className="flex items-center space-x-1">
                 <Label htmlFor="direction">Solar Panel Direction</Label>
@@ -144,7 +133,6 @@ export function RoiInputForm({
                     value as CardinalDirection
                   )
                 }
-                disabled={isCalculating} // Disable while calculating
               >
                 <SelectTrigger id="direction">
                   <SelectValue placeholder="Select direction" />
@@ -189,7 +177,6 @@ export function RoiInputForm({
                   // Pass value directly
                   handleChange("haveOrWillGetEv", checked)
                 }
-                disabled={isCalculating} // Disable while calculating
               />
             </div>
 
@@ -222,7 +209,6 @@ export function RoiInputForm({
                   // Pass value directly
                   handleChange("homeOccupancyDuringWorkHours", checked)
                 }
-                disabled={isCalculating} // Disable while calculating
               />
             </div>
 
@@ -256,7 +242,6 @@ export function RoiInputForm({
                   // Pass value directly
                   handleChange("needFinance", checked)
                 }
-                disabled={isCalculating} // Disable while calculating
               />
             </div>
 
@@ -292,7 +277,6 @@ export function RoiInputForm({
                 // Or keep onChange, ensuring handleChange handles number conversion robustly
                 onChange={(e) => handleChange("batterySize", e.target.value)}
                 step="0.1"
-                disabled={isCalculating} // Disable while calculating
               />
             </div>
 
@@ -325,7 +309,6 @@ export function RoiInputForm({
                 placeholder="e.g., 4500"
                 value={formState.usage}
                 onChange={(e) => handleChange("usage", e.target.value)}
-                disabled={isCalculating} // Disable while calculating
               />
             </div>
 
@@ -359,18 +342,8 @@ export function RoiInputForm({
                 value={formState.solarSize}
                 onChange={(e) => handleChange("solarSize", e.target.value)}
                 step="0.1"
-                disabled={isCalculating} // Disable while calculating
               />
             </div>
-
-            <Button
-              type="submit"
-              disabled={isCalculating} // Use isCalculating prop
-              className="w-full"
-            >
-              {/* Update button text based on loading state */}
-              {isCalculating ? "Calculating..." : "Update Calculation"}
-            </Button>
           </form>
         </TooltipProvider>
       </CardContent>

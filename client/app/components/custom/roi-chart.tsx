@@ -76,7 +76,7 @@ export function RoiChart({ chartData }: RoiChartProps) {
             tickLine={false}
             axisLine={false}
             tickMargin={8}
-            fontSize={12}
+            fontSize={14}
             name="Year"
           />
           <YAxis
