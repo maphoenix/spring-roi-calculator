@@ -2,12 +2,11 @@
 
 A microservices-based ROI calculator for solar and battery installations with battery degradation modeling, time series data, PDF and Excel export, Thymeleaf UI, and REST API.
 
-## Small Tasks:
+## Competitors:
 
-- X axis needs a larger font
-- The roof question needs to be more clear and reference solar, i.e. where will you be putting it
+- https://www.instagram.com/p/DI_rPaLs6-D/?igsh=MXQ0MWdhamdydDdtag==
 
-## Competitors for inspiration:
+## Competitor tools for inspiration:
 
 - https://pvfitcalculator.energysavingtrust.org.uk/App/SiteSize
 
@@ -22,6 +21,7 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ### Front-end:
 
+- Add rough panel estimations
 - Add Google Tag Manager
 - Add Google Analytics
 - Add Google Search Console
@@ -30,7 +30,7 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ROI Service Changes
 
-- Pull the real tariffs 
+- Pull the real tariffs
 - Fix EV tarrif vs non EV
 - Fix Home During Work Hours
 - Fix Need Finance (i.e. cash vs borrow)
