@@ -109,6 +109,9 @@ public class RoiService {
         double solarUsed;
         double solarExport;
        
+        logger.info("HomeOccupancyDuringWorkHours: {}", 
+            String.format ("%B",request.isHomeOccupancyDuringWorkHours()));
+
         if (request.isHomeOccupancyDuringWorkHours() == true) {
             solarUsed = solarGen * AT_HOME_SOLAR_SELF_USE_PERCENTAGE;
             solarExport = solarGen * AT_HOME_SOLAR_EXPORT_PERCENTAGE;
