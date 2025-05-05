@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
-import axiosClient from "@/lib/axios-client";
+import { formatCurrency } from "@/lib/format-currency";
+import { useRoi } from "@/hooks/roi";
 import { motion, AnimatePresence } from "framer-motion";
 import { z } from "zod";
 import { zodValidator } from "@tanstack/zod-adapter";
@@ -78,8 +78,6 @@ export const Route = createFileRoute("/")({
   validateSearch: zodValidator(combinedSearchParamsSchema),
   component: IndexComponent,
 });
-
-// --- Mapping Functions (Simplified/Adjusted) ---
 
 const mapGuideParamsToFormState = (
   params: CombinedSearchParams
@@ -166,17 +164,6 @@ const getFormStateFromCombinedParams = (
   return formState;
 };
 
-// API call function
-const calculateRoi = async (
-  formData: SolarRoiCalculatorParams
-): Promise<RoiCalculationResponse> => {
-  const { data } = await axiosClient.post<RoiCalculationResponse>(
-    "/api/roi/calculate",
-    formData
-  );
-  return data;
-};
-
 function IndexComponent() {
   const [results, setResults] = useState<RoiCalculationResponse | null>(null);
   const searchParams = Route.useSearch(); // Use the validated/typed search params
@@ -226,41 +213,17 @@ function IndexComponent() {
   const { showDashboardInitially, initialFormData } = getInitialState();
 
   // Initialize state - ensure currentFormData uses the calculated initialFormData
-  const [showDashboard, setShowDashboard] = useState(showDashboardInitially);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [currentFormData, setCurrentFormData] =
     useState<SolarRoiCalculatorParams>(initialFormData);
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
   const [isDebouncing, setIsDebouncing] = useState(false); // State for debounce indicator
-
-  // --- Refined Mutation and Debounce ---
-
-  const mutation = useMutation({
-    mutationFn: calculateRoi,
-    onMutate: () => {
-      console.log("Mutation starting (onMutate)... calculation beginning.");
-      // Hide debounce indicator *just as* the actual API call starts
-      setIsDebouncing(false);
-    },
-    onSuccess: (data) => {
-      console.log("Calculation successful:", data);
-      setResults(data);
-      // Ensure cleared on success (might be redundant if onMutate fired)
-      setIsDebouncing(false);
-      if (!showDashboard) setShowDashboard(true);
-    },
-    onError: (error) => {
-      console.error("Calculation failed:", error);
-      setResults(null);
-      // Ensure cleared on error
-      setIsDebouncing(false);
-      if (!showDashboard) setShowDashboard(true); // Still show dashboard on error
-    },
-    onSettled: () => {
-      // Final cleanup ensure debouncing indicator is off
-      console.log("Mutation settled.");
-      setIsDebouncing(false);
-    },
-  });
+  const mutation = useRoi(
+    setIsDebouncing,
+    setResults,
+    showDashboard,
+    setShowDashboard
+  );
 
   // Debounced API call function - just calls mutate
   const debouncedCalculate = useDebouncedCallback(
@@ -455,14 +418,6 @@ function IndexComponent() {
       console.error("Failed to copy share URL:", err);
       // TODO: Show error feedback to user
     }
-  };
-
-  const formatCurrency = (amount: number, _currency?: string) => {
-    // Make currency optional
-    return `£${amount.toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
   };
 
   return (

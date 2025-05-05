@@ -10,7 +10,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, Check, Compass } from "lucide-react";
+import { ArrowLeft, Check, Compass } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 // Define interfaces for options and steps
@@ -232,12 +232,10 @@ const CompassSelector: React.FC<CompassSelectorProps> = ({
     </div>
   );
 };
-// *** END NEW COMPONENT ***
 
 export function SimplifiedGuide({ onComplete }: SimplifiedGuideProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
-  const navigate = useNavigate();
 
   const handleAnswer = (stepId: string, value: string, solarSize?: number) => {
     const newAnswers: Record<string, string | number> = {
