@@ -47,7 +47,7 @@ const steps: Step[] = [
         value: "small",
         label: "2 Bedrooms",
         image: "/small-house.svg",
-        solarSize: 1.6,
+        solarSize: 2.0,
         panelRangeText: "Up to 4 Panels",
       },
       {

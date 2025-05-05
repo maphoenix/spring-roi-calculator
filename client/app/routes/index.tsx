@@ -93,6 +93,14 @@ const mapGuideParamsToFormState = (
         : params.houseSize === "medium"
           ? 4500
           : 6000;
+
+    // Map houseSize to solarSize
+    mapping.solarSize =
+      params.houseSize === "small"
+        ? 2.0
+        : params.houseSize === "medium"
+          ? 3.2
+          : 4.8;
   }
 
   // Map roofDirection to solarPanelDirection (hyphenated format)
@@ -462,173 +470,149 @@ function IndexComponent() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <AnimatePresence mode="wait">
-        {!showDashboard ? (
-          <motion.div
-            key="guide"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5 }}
-            className="max-w-2xl mx-auto" // Center the guide
+      {!showDashboard ? (
+        <motion.div
+          key="guide"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-2xl mx-auto" // Center the guide
+        >
+          {/* Pass initial data if available from params (though usually guide starts clean) */}
+          <SimplifiedGuide onComplete={handleGuideComplete} />
+        </motion.div>
+      ) : (
+        <>
+          {/* Go Back Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleGoBack} // Use the new handler
+            className="mb-4 -ml-2 flex items-center space-x-2 text-muted-foreground hover:text-foreground" // Adjust margin for alignment
           >
-            {/* Pass initial data if available from params (though usually guide starts clean) */}
-            <SimplifiedGuide onComplete={handleGuideComplete} />
-          </motion.div>
-        ) : (
-          <motion.div
-            key="dashboard"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }} // Slightly shorter delay
-          >
-            {/* Go Back Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleGoBack} // Use the new handler
-              className="mb-4 -ml-2 flex items-center space-x-2 text-muted-foreground hover:text-foreground" // Adjust margin for alignment
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Start Over</span>
-            </Button>
+            <ArrowLeft className="h-4 w-4" />
+            <span>Start Over</span>
+          </Button>
 
-            {/* Main layout grid - swap the order of columns on desktop */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Results Column - Now on left for desktop */}
-              <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
-                {/* Loading/Initial State for Results Area */}
-                {/* Show specific loading message only when mutation is actually pending */}
-                {mutation.isPending && (
-                  <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin inline mr-2" />
-                    Calculating...
-                  </div>
-                )}
-                {/* Show initial prompt if not loading and no results/error */}
-                {!mutation.isPending && !results && !mutation.isError && (
-                  <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
-                    Adjust the inputs on the right to calculate your potential
-                    savings.
-                  </div>
-                )}
-                {/* Error state */}
-                {!mutation.isPending && mutation.isError && (
-                  <div className="text-center text-red-600 py-10 min-h-[100px] flex flex-col items-center justify-center">
-                    <span>Calculation failed.</span>
-                    <span className="text-sm text-red-500 mt-1">
-                      {mutation.error?.message ||
-                        "Please check inputs or try again."}
-                    </span>
-                  </div>
-                )}
-
-                {/* Results Display (only if results exist and not pending) */}
-                {!mutation.isPending && results && (
-                  <>
-                    {/* ScoreCards */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                    >
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <ScoreCard
-                          title="Total System Cost"
-                          value={formatCurrency(results.totalCost.amount)}
-                        />
-                        <ScoreCard
-                          title="Yearly Savings"
-                          value={formatCurrency(results.yearlySavings.amount)}
-                        />
-                        <ScoreCard
-                          title="Payback Period"
-                          value={`${results.paybackPeriod.years < 0 ? ">15" : results.paybackPeriod.years} Years`}
-                        />
-                        <ScoreCard
-                          title={`ROI (${results.roiPercentage.periodYears} Years)`}
-                          value={`${results.roiPercentage.percentage.toFixed(1)}%`}
-                        />
-                      </div>
-                    </motion.div>
-
-                    {/* Chart */}
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.2 }}
-                    >
-                      <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm relative">
-                        {/* Debounce Indicator Overlay (Subtle) */}
-                        <AnimatePresence>
-                          {isDebouncing && (
-                            <motion.div
-                              key="debounce-indicator"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.1 }}
-                              className="absolute top-2 right-2 p-1.5 bg-primary/10 rounded-full z-10"
-                            >
-                              <Loader2 className="h-4 w-4 animate-spin text-primary/80" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                        <h2 className="text-xl font-semibold mb-4 text-center">
-                          Cumulative Savings Over Time
-                        </h2>
-                        <div className="mt-2 md:mt-0 relative">
-                          {/* Ensure chartData is passed correctly */}
-                          <RoiChart chartData={results.roiChartData} />
-                          {results.roiChartData.breakEvenYear !== null &&
-                            results.roiChartData.breakEvenYear > 0 && (
-                              <p className="text-sm text-muted-foreground mt-4 text-center">
-                                Estimated break-even point around year{" "}
-                                {results.roiChartData.breakEvenYear}.
-                              </p>
-                            )}
-                          {results.roiChartData.breakEvenYear !== null &&
-                            results.roiChartData.breakEvenYear < 0 && (
-                              <p className="text-sm text-muted-foreground mt-4 text-center">
-                                Payback period may be longer than the system
-                                lifespan ({results.roiPercentage.periodYears}{" "}
-                                years).
-                              </p>
-                            )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </div>
-
-              {/* Inputs Column - Now on right for desktop */}
-              <div className="lg:col-span-1 space-y-6 order-1 lg:order-2">
-                {/* Pass the local state which is kept in sync with URL */}
-                <RoiInputForm
-                  formData={currentFormData}
-                  onFormDataChange={handleFormDataChange}
-                />
-                {/* Share Button */}
-                <Button
-                  onClick={handleShare}
-                  disabled={shareStatus === "copied" || !results} // Disable if no results to share
-                  className="w-full"
-                  variant="outline" // Less prominent than main action
-                >
-                  <Share2Icon className="mr-2 h-4 w-4" />
-                  {shareStatus === "copied"
-                    ? "Link Copied!"
-                    : "Share Calculation"}
-                </Button>
-                <div className="hidden md:block">
-                  <AffiliateBanner />
+          {/* Main layout grid - swap the order of columns on desktop */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Results Column - Now on left for desktop */}
+            <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
+              {/* Loading/Initial State for Results Area */}
+              {/* Show specific loading message only when mutation is actually pending */}
+              {mutation.isPending && (
+                <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin inline mr-2" />
+                  Calculating...
                 </div>
+              )}
+              {/* Show initial prompt if not loading and no results/error */}
+              {!mutation.isPending && !results && !mutation.isError && (
+                <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
+                  Adjust the inputs on the right to calculate your potential
+                  savings.
+                </div>
+              )}
+              {/* Error state */}
+              {!mutation.isPending && mutation.isError && (
+                <div className="text-center text-red-600 py-10 min-h-[100px] flex flex-col items-center justify-center">
+                  <span>Calculation failed.</span>
+                  <span className="text-sm text-red-500 mt-1">
+                    {mutation.error?.message ||
+                      "Please check inputs or try again."}
+                  </span>
+                </div>
+              )}
+
+              {/* Results Display (only if results exist and not pending) */}
+              {!mutation.isPending && results && (
+                <>
+                  {/* ScoreCards */}
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <ScoreCard
+                        title="Total System Cost"
+                        value={formatCurrency(results.totalCost.amount)}
+                      />
+                      <ScoreCard
+                        title="Yearly Savings"
+                        value={formatCurrency(results.yearlySavings.amount)}
+                      />
+                      <ScoreCard
+                        title="Payback Period"
+                        value={`${results.paybackPeriod.years < 0 ? ">15" : results.paybackPeriod.years} Years`}
+                      />
+                      <ScoreCard
+                        title={`ROI (${results.roiPercentage.periodYears} Years)`}
+                        value={`${results.roiPercentage.percentage.toFixed(1)}%`}
+                      />
+                    </div>
+                  </>
+
+                  {/* Chart */}
+                  <>
+                    <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm relative">
+                      {/* Debounce Indicator Overlay (Subtle) */}
+                      {/* {isDebouncing && (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin text-primary/80" />
+                        </>
+                      )} */}
+                      <h2 className="text-xl font-semibold mb-4 text-center">
+                        Cumulative Savings Over Time
+                      </h2>
+                      <div className="mt-2 md:mt-0 relative">
+                        {/* Ensure chartData is passed correctly */}
+                        <RoiChart chartData={results.roiChartData} />
+                        {results.roiChartData.breakEvenYear !== null &&
+                          results.roiChartData.breakEvenYear > 0 && (
+                            <p className="text-sm text-muted-foreground mt-4 text-center">
+                              Estimated break-even point around year{" "}
+                              {results.roiChartData.breakEvenYear}.
+                            </p>
+                          )}
+                        {results.roiChartData.breakEvenYear !== null &&
+                          results.roiChartData.breakEvenYear < 0 && (
+                            <p className="text-sm text-muted-foreground mt-4 text-center">
+                              Payback period may be longer than the system
+                              lifespan ({results.roiPercentage.periodYears}{" "}
+                              years).
+                            </p>
+                          )}
+                      </div>
+                    </div>
+                  </>
+                </>
+              )}
+            </div>
+
+            {/* Inputs Column - Now on right for desktop */}
+            <div className="lg:col-span-1 space-y-6 order-1 lg:order-2">
+              {/* Pass the local state which is kept in sync with URL */}
+              <RoiInputForm
+                formData={currentFormData}
+                onFormDataChange={handleFormDataChange}
+              />
+              {/* Share Button */}
+              <Button
+                onClick={handleShare}
+                disabled={shareStatus === "copied" || !results} // Disable if no results to share
+                className="w-full"
+                variant="outline" // Less prominent than main action
+              >
+                <Share2Icon className="mr-2 h-4 w-4" />
+                {shareStatus === "copied"
+                  ? "Link Copied!"
+                  : "Share Calculation"}
+              </Button>
+              <div className="hidden md:block">
+                <AffiliateBanner />
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <div className="md:hidden mt-8">
