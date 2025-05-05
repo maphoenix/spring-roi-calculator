@@ -21,7 +21,6 @@ A microservices-based ROI calculator for solar and battery installations with ba
 
 ### Front-end:
 
-- Add rough panel estimations
 - Add Google Tag Manager
 - Add Google Analytics
 - Add Google Search Console

@@ -359,33 +359,10 @@ function IndexComponent() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }} // Slight delay for smoother feel
           >
-            {/* Main layout grid */}
+            {/* Main layout grid - swap the order of columns on desktop */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column */}
-              <div className="lg:col-span-1 space-y-6">
-                <RoiInputForm
-                  formData={currentFormData}
-                  // Use the simple state updater for changes
-                  onFormDataChange={handleFormDataChange}
-                  // Remove onCalculate prop as it's no longer needed for a button
-                  // isCalculating={mutation.isPending} // Keep passing loading state for UI feedback in form
-                />
-                {/* Share Button */}
-                <Button
-                  onClick={handleShare}
-                  disabled={shareStatus === "copied"}
-                  className="w-full"
-                >
-                  <Share2Icon className="mr-2 h-4 w-4" />
-                  {shareStatus === "copied"
-                    ? "Link Copied!"
-                    : "Share Calculation"}
-                </Button>
-                <AffiliateBanner />
-              </div>
-
-              {/* Right Column: Results */}
-              <div className="lg:col-span-2 space-y-8">
+              {/* Results Column - Now on left for desktop */}
+              <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
                 {/* Loading/Initial State for Results Area */}
                 {!results && mutation.isPending && (
                   <div className="text-center text-muted-foreground py-10">
@@ -394,7 +371,8 @@ function IndexComponent() {
                 )}
                 {!results && !mutation.isPending && !mutation.isError && (
                   <div className="text-center text-muted-foreground py-10">
-                    Adjust the inputs on the left to see your potential savings.
+                    Adjust the inputs on the right to see your potential
+                    savings.
                   </div>
                 )}
                 {mutation.isError && (
@@ -450,13 +428,39 @@ function IndexComponent() {
                   </>
                 )}
               </div>
+
+              {/* Inputs Column - Now on right for desktop */}
+              <div className="lg:col-span-1 space-y-6 order-1 lg:order-2">
+                <RoiInputForm
+                  formData={currentFormData}
+                  onFormDataChange={handleFormDataChange}
+                />
+                {/* Share Button */}
+                <Button
+                  onClick={handleShare}
+                  disabled={shareStatus === "copied"}
+                  className="w-full"
+                >
+                  <Share2Icon className="mr-2 h-4 w-4" />
+                  {shareStatus === "copied"
+                    ? "Link Copied!"
+                    : "Share Calculation"}
+                </Button>
+                <div className="hidden md:block">
+                  <AffiliateBanner />
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Footer */}
-      {showDashboard && (
+      <div className="md:hidden">
+        <AffiliateBanner />
+      </div>
+
+      {showDashboard && results && (
         <footer className="mt-12 pt-6 border-t border-border/40">
           <p className="text-center text-sm text-muted-foreground">
             Disclaimer: This calculator provides approximate estimations based
