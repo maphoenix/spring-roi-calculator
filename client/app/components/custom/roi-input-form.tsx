@@ -216,13 +216,13 @@ export function RoiInputForm({
             <div className="text-sm font-semibold text-center text-muted-foreground pt-2">
               Toggle On/Off Core Features
             </div>
-            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4 sm:justify-around items-center pb-4 border-b">
+            <div className="flex flex-row space-x-2 justify-between items-center pb-4 border-b sm:flex-row sm:space-x-4 sm:justify-around sm:space-y-0">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant={isSolarEnabled ? "default" : "outline"}
                     onClick={() => handleToggleSolar(!isSolarEnabled)}
-                    className={`cursor-pointer transition-colors w-full sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 mb-4 md:mb-0 ${
+                    className={`cursor-pointer transition-colors flex-grow sm:flex-grow-0 sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 ${
                       isSolarEnabled
                         ? "bg-green-500 hover:bg-green-600 text-white"
                         : "text-muted-foreground"
@@ -241,7 +241,7 @@ export function RoiInputForm({
                   <Button
                     variant={isBatteryEnabled ? "default" : "outline"}
                     onClick={() => handleToggleBattery(!isBatteryEnabled)}
-                    className={`cursor-pointer transition-colors w-full sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 mb-4 md:mb-0 ${
+                    className={`cursor-pointer transition-colors flex-grow sm:flex-grow-0 sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 ${
                       isBatteryEnabled
                         ? "bg-blue-500 hover:bg-blue-600 text-white"
                         : "text-muted-foreground"
@@ -267,7 +267,7 @@ export function RoiInputForm({
                         !formState.haveOrWillGetEv
                       )
                     }
-                    className={`cursor-pointer transition-colors w-full sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 mb-4 md:mb-0  ${
+                    className={`cursor-pointer transition-colors flex-grow sm:flex-grow-0 sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 ${
                       formState.haveOrWillGetEv
                         ? "bg-purple-500 hover:bg-purple-600 text-white"
                         : "text-muted-foreground"

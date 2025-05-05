@@ -32,16 +32,16 @@ public class RoiService {
 
     // Constants for calculations
     private static final double BATTERY_USABLE_PERCENTAGE = 0.90;  // 90% of battery is usable
-    private static final double BATTERY_EFFICIENCY = 0.85;         // 85% round-trip efficiency
-    private static final double SOLAR_GENERATION_FACTOR = 850.0;   // kWh per kW of solar annually
     private static final double SOLAR_SELF_USE_PERCENTAGE = 0.50;  // 50% of solar is used directly
     private static final double SOLAR_EXPORT_PERCENTAGE = 0.50;    // 50% of solar is exported
     private static final double AT_HOME_SOLAR_EXPORT_PERCENTAGE = 0.30;    // 30% of solar is exported
     private static final double AT_HOME_SOLAR_SELF_USE_PERCENTAGE = 0.70;  // 70% of solar is used directly
-    private static final int MAX_BATTERY_YEARS = 15;               // Maximum battery lifespan in years
-    private static final double BATTERY_YEAR_10_CAPACITY = 0.70;   // Battery at 70% capacity after 10 years
 
     // Initial cost estimates (could be parameterized in future versions)
+    private static final double SOLAR_GENERATION_FACTOR = 850.0;   // kWh per kW of solar annually
+    private static final double BATTERY_EFFICIENCY = 0.85;         // 85% round-trip efficiency
+    private static final int MAX_BATTERY_YEARS = 15;               // Maximum battery lifespan in years
+    private static final double BATTERY_YEAR_10_CAPACITY = 0.70;   // Battery at 70% capacity after 10 years
     private static final double BATTERY_COST_PER_KWH = 500.0;      // Cost per kWh of battery
     private static final double SOLAR_COST_PER_KW = 1500.0;        // Cost per kW of solar
 
@@ -108,9 +108,9 @@ public class RoiService {
 
         double solarUsed;
         double solarExport;
-       
-        logger.info("HomeOccupancyDuringWorkHours: {}", 
-            String.format ("%B",request.isHomeOccupancyDuringWorkHours()));
+
+        logger.info("HomeOccupancyDuringWorkHours: {}",
+                String.format("%B", request.isHomeOccupancyDuringWorkHours()));
 
         if (request.isHomeOccupancyDuringWorkHours() == true) {
             solarUsed = solarGen * AT_HOME_SOLAR_SELF_USE_PERCENTAGE;

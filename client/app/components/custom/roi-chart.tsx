@@ -91,14 +91,14 @@ export function RoiChart({ chartData }: RoiChartProps) {
           />
           <ReferenceLine
             y={0}
-            stroke="hsl(var(--muted-foreground))"
+            stroke="orange"
             strokeDasharray="2 2"
             label={{
               value: "Break Even",
               position: "insideTopRight",
-              dy: -10,
-              fill: "hsl(var(--muted-foreground))",
-              fontSize: 10,
+              dy: -25,
+              fill: "orange",
+              fontSize: 14,
             }}
           />
           <Tooltip
