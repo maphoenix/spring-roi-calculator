@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { formatCurrency } from "@/lib/format-currency";
 import { useRoi } from "@/hooks/roi";
@@ -46,7 +46,7 @@ const combinedSearchParamsSchema = z.object({
   solarPanelDirection: z
     .enum([
       "north",
-      "north_east", // Ensure these match CardinalDirection or map them
+      "north_east", // Use underscore for URL param key consistency
       "north_west",
       "south",
       "south_east",
@@ -57,15 +57,15 @@ const combinedSearchParamsSchema = z.object({
     .optional(),
   haveOrWillGetEv: z.coerce.boolean().optional(),
   homeOccupancyDuringWorkHours: z.coerce.boolean().optional(),
-  needFinance: z.coerce.boolean().optional(), // Can overlap with guide param if needed
+  needFinance: z.coerce.boolean().optional(), // Main form param version
 });
 
 // Infer the type from the schema
 type CombinedSearchParams = z.infer<typeof combinedSearchParamsSchema>;
 
-// Define default form state values
+// Define default form state values (used when no relevant params are present)
 const defaultFormState: SolarRoiCalculatorParams = {
-  solarPanelDirection: "south",
+  solarPanelDirection: "south", // Use hyphenated for internal state
   haveOrWillGetEv: false,
   homeOccupancyDuringWorkHours: true,
   needFinance: false,
@@ -79,6 +79,7 @@ export const Route = createFileRoute("/")({
   component: IndexComponent,
 });
 
+// Function to map guide params to form state (ensure values match form state types)
 const mapGuideParamsToFormState = (
   params: CombinedSearchParams
 ): Partial<SolarRoiCalculatorParams> => {
@@ -94,46 +95,33 @@ const mapGuideParamsToFormState = (
           : 6000;
   }
 
-  // Map roofDirection to solarPanelDirection
-  // The schema defines roofDirection with hyphens (e.g., "north-east")
-  // CardinalDirection also uses hyphens.
-  // So, use the value directly if it's valid and not "dont_know".
+  // Map roofDirection to solarPanelDirection (hyphenated format)
   if (params.roofDirection && params.roofDirection !== "dont_know") {
-    // No replacement needed, use the hyphenated value directly from schema
-    mapping.solarPanelDirection = params.roofDirection as CardinalDirection; // Use the hyphenated value
+    mapping.solarPanelDirection = params.roofDirection as CardinalDirection;
   } else if (params.roofDirection === "dont_know") {
-    // Set a default if "Don't Know" is selected
-    console.log(
-      "Setting default solar panel direction to south from guide param 'dont_know'",
-      params
-    );
-    mapping.solarPanelDirection = "south";
+    mapping.solarPanelDirection = "south"; // Default if 'dont_know'
   }
 
-  // Map hasEv to haveOrWillGetEv
+  // Map hasEv to haveOrWillGetEv (boolean)
   if (params.hasEv !== undefined) {
-    // Check for undefined explicitly
     mapping.haveOrWillGetEv = params.hasEv === "yes";
   }
 
-  // Map isHome to homeOccupancyDuringWorkHours
+  // Map isHome to homeOccupancyDuringWorkHours (boolean)
   if (params.isHome !== undefined) {
-    // Check for undefined explicitly
     mapping.homeOccupancyDuringWorkHours = params.isHome === "yes";
   }
 
-  // Map needsFinance (guide version) to needFinance (form version)
+  // Map needsFinance (guide) to needFinance (form) (boolean)
   if (params.needsFinance !== undefined) {
-    // Check for undefined explicitly
     mapping.needFinance = params.needsFinance === "yes";
   }
 
-  console.log("Mapped Guide Params:", mapping); // Add log
-
+  // console.log("Mapped Guide Params to Form State:", mapping); // Reduce noise
   return mapping;
 };
 
-// Function to get form state directly from combined search params
+// Function to get form state directly from combined search params (ensure values match form state types)
 const getFormStateFromCombinedParams = (
   params: CombinedSearchParams
 ): Partial<SolarRoiCalculatorParams> => {
@@ -144,8 +132,7 @@ const getFormStateFromCombinedParams = (
   if (params.solarSize !== undefined) formState.solarSize = params.solarSize;
   if (params.usage !== undefined) formState.usage = params.usage;
 
-  // Convert the underscore version from URL params (e.g., "north_west")
-  // back to the hyphenated version expected by CardinalDirection (e.g., "north-west")
+  // Convert underscore version from URL to hyphenated for internal state
   if (params.solarPanelDirection !== undefined) {
     formState.solarPanelDirection = params.solarPanelDirection.replace(
       "_",
@@ -159,254 +146,299 @@ const getFormStateFromCombinedParams = (
     formState.homeOccupancyDuringWorkHours =
       params.homeOccupancyDuringWorkHours;
   if (params.needFinance !== undefined)
-    formState.needFinance = params.needFinance; // Main form version
+    formState.needFinance = params.needFinance;
 
+  // console.log("Parsed Form State from Combined Params:", formState); // Reduce noise
   return formState;
+};
+
+// Helper function to derive the complete state from search params
+const deriveStateFromParams = (
+  searchParams: CombinedSearchParams
+): SolarRoiCalculatorParams => {
+  // Check for the presence of *any* parameter defined in the main form section of the schema
+  const hasMainFormParams = Object.keys(searchParams).some(
+    (key) =>
+      [
+        "batterySize",
+        "solarSize",
+        "usage",
+        "solarPanelDirection",
+        "haveOrWillGetEv",
+        "homeOccupancyDuringWorkHours",
+        "needFinance",
+      ].includes(key) &&
+      searchParams[key as keyof CombinedSearchParams] !== undefined
+  );
+
+  // Check for the presence of *any* parameter defined in the guide section of the schema
+  const hasGuideParams = Object.keys(searchParams).some(
+    (key) =>
+      [
+        "houseSize",
+        "roofDirection",
+        "hasEv",
+        "isHome",
+        "needsFinance",
+      ].includes(key) &&
+      searchParams[key as keyof CombinedSearchParams] !== undefined
+  );
+
+  let derivedState: SolarRoiCalculatorParams;
+
+  if (hasMainFormParams) {
+    // Prioritize main form params - merge them onto defaults
+    // console.log("Deriving state: Prioritizing main form params"); // Noise reduction
+    derivedState = {
+      ...defaultFormState,
+      ...getFormStateFromCombinedParams(searchParams),
+    };
+  } else if (hasGuideParams) {
+    // Fallback to guide params - merge them onto defaults
+    // console.log("Deriving state: Falling back to guide params"); // Noise reduction
+    derivedState = {
+      ...defaultFormState,
+      ...mapGuideParamsToFormState(searchParams),
+    };
+  } else {
+    // No relevant params, use defaults
+    // console.log("Deriving state: Using default form state"); // Noise reduction
+    derivedState = { ...defaultFormState }; // Use spread to avoid mutation
+  }
+  // console.log("Derived State from Params:", derivedState); // Reduce noise
+  return derivedState;
+};
+
+// Helper function to convert form state to URL search params suitable for navigation
+const formStateToSearchParams = (
+  state: SolarRoiCalculatorParams
+): Partial<CombinedSearchParams> => {
+  const params: Partial<CombinedSearchParams> = {
+    batterySize: state.batterySize,
+    solarSize: state.solarSize,
+    usage: state.usage,
+    // Convert hyphenated internal state back to underscore for URL
+    solarPanelDirection: state.solarPanelDirection.replace(
+      "-",
+      "_"
+    ) as CombinedSearchParams["solarPanelDirection"],
+    haveOrWillGetEv: state.haveOrWillGetEv,
+    homeOccupancyDuringWorkHours: state.homeOccupancyDuringWorkHours,
+    needFinance: state.needFinance,
+  };
+  // Filter out undefined values before returning
+  return Object.entries(params)
+    .filter(([_, value]) => value !== undefined)
+    .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
 };
 
 function IndexComponent() {
   const [results, setResults] = useState<RoiCalculationResponse | null>(null);
-  const searchParams = Route.useSearch(); // Use the validated/typed search params
+  const searchParams = Route.useSearch(); // Use the validated/typed search params from the router
   const navigate = useNavigate();
 
-  // Determine initial state based on params
-  const getInitialState = useCallback(() => {
-    const hasGuideParams =
-      searchParams.houseSize ||
-      searchParams.roofDirection ||
-      searchParams.hasEv ||
-      searchParams.isHome ||
-      searchParams.needsFinance; // Check for *any* guide-specific param
+  // Calculate initial state ONCE based on the search params present on mount
+  // UseMemo ensures this doesn't re-run on every render, only if searchParams ref changes (which it shouldn't needlessly)
+  const initialDerivedState = useMemo(() => {
+    // console.log("Calculating initialDerivedState with searchParams:", searchParams); // Debug log
+    return deriveStateFromParams(searchParams);
+  }, [searchParams]); // Depend on searchParams from the router
 
-    const hasMainFormParams =
-      searchParams.batterySize !== undefined ||
-      searchParams.solarSize !== undefined ||
-      searchParams.usage !== undefined ||
-      searchParams.solarPanelDirection !== undefined ||
-      searchParams.haveOrWillGetEv !== undefined ||
-      searchParams.homeOccupancyDuringWorkHours !== undefined ||
-      searchParams.needFinance !== undefined; // Check for *any* main form param
+  // Determine if dashboard should be shown initially based on *any* relevant param in the initial searchParams
+  const showDashboardInitially = useMemo(() => {
+    const hasAnyRelevantParam = Object.keys(searchParams).some(
+      (key) =>
+        combinedSearchParamsSchema.shape.hasOwnProperty(key) &&
+        searchParams[key as keyof CombinedSearchParams] !== undefined
+    );
+    // console.log("Calculating showDashboardInitially:", hasAnyRelevantParam, "from searchParams:", searchParams); // Debug log
+    return hasAnyRelevantParam;
+  }, [searchParams]); // Depend on searchParams from the router
 
-    const showDashboardInitially = hasGuideParams || hasMainFormParams;
-
-    let initialFormData: SolarRoiCalculatorParams;
-    if (hasMainFormParams) {
-      // Prioritize direct main form params if they exist
-      initialFormData = {
-        ...defaultFormState,
-        ...getFormStateFromCombinedParams(searchParams),
-      };
-    } else if (hasGuideParams) {
-      // Fallback to guide params if no main form params
-      initialFormData = {
-        ...defaultFormState,
-        ...mapGuideParamsToFormState(searchParams),
-      };
-    } else {
-      // No params, use defaults
-      initialFormData = defaultFormState;
-    }
-
-    return { showDashboardInitially, initialFormData };
-  }, [searchParams]); // Dependency is correct
-
-  const { showDashboardInitially, initialFormData } = getInitialState();
-
-  // Initialize state - ensure currentFormData uses the calculated initialFormData
-  const [showDashboard, setShowDashboard] = useState(false);
+  // State Management
+  const [showDashboard, setShowDashboard] = useState(showDashboardInitially);
   const [currentFormData, setCurrentFormData] =
-    useState<SolarRoiCalculatorParams>(initialFormData);
+    useState<SolarRoiCalculatorParams>(initialDerivedState); // Initialize with derived state
   const [shareStatus, setShareStatus] = useState<"idle" | "copied">("idle");
-  const [isDebouncing, setIsDebouncing] = useState(false); // State for debounce indicator
+  // isDebouncing indicates that the user has changed input and we are waiting for the debounce timer to update the URL
+  const [isDebouncing, setIsDebouncing] = useState(false);
   const mutation = useRoi(
-    setIsDebouncing,
+    setIsDebouncing, // Pass this down - useRoi's onMutate/onSettled will set it to false when API call starts/finishes
     setResults,
     showDashboard,
     setShowDashboard
   );
 
-  // Debounced API call function - just calls mutate
-  const debouncedCalculate = useDebouncedCallback(
+  // --- Debounced Navigation ---
+  // This function updates the URL after a delay when form inputs change
+  const debouncedNavigate = useDebouncedCallback(
     (data: SolarRoiCalculatorParams) => {
-      console.log("Debounce timer fired. Mutating with:", data);
-      mutation.mutate(data);
+      // console.log("Debounce timer fired for navigation. Updating URL..."); // Reduce noise
+      setIsDebouncing(false); // Turn off debounce indicator *when the navigation occurs*
+
+      const nextSearchParams = formStateToSearchParams(data);
+
+      // Get the *current* search params from the router hook scope *at the time of firing*
+      // Use the 'searchParams' variable captured by this callback's closure
+      const currentRouterParamsObject = searchParams; // Use the hook state directly
+
+      // Compare the *main form params* derived from the current URL with the ones we are about to set
+      // This prevents unnecessary navigation if the URL was updated externally to match the target state already
+      const currentFormParamsFromUrl = formStateToSearchParams(
+        deriveStateFromParams(currentRouterParamsObject)
+      );
+
+      if (
+        JSON.stringify(nextSearchParams) !==
+        JSON.stringify(currentFormParamsFromUrl)
+      ) {
+        // console.log("Navigating with new search params:", nextSearchParams); // Reduce noise
+        // Use functional update with navigate to merge/replace params correctly
+        // We replace entirely with the main form params, effectively clearing any guide-specific params
+        navigate({
+          // Provide the plain object. Cast to 'any' if linter still complains despite correct structure.
+          search: nextSearchParams as any,
+          replace: true, // Use replace to avoid polluting browser history
+        });
+      } else {
+        // console.log("URL params already match target state, skipping navigation."); // Reduce noise
+      }
+      // The URL change triggered by navigate() will cause the main useEffect to run and handle the calculation
     },
     750 // Debounce delay
   );
 
-  // Effect to run calculation when form data changes (debounced)
+  // --- Effect to React to URL Changes ---
+  // This is the CORE effect. It runs whenever searchParams (from router) change.
   useEffect(() => {
-    // This effect runs when currentFormData changes, or other dependencies.
-    // It schedules the debounced calculation and updates the URL.
+    // console.log("URL searchParams changed (useEffect):", searchParams); // Reduce noise
 
-    // Avoid running if the dashboard isn't shown OR
-    // if a calculation mutation is already running.
-    if (!showDashboard || mutation.isPending) {
-      console.log(
-        "Main effect skipped: dashboard not shown or mutation pending."
-      );
-      // Cancel any pending debounce from previous state changes if we bail early.
-      debouncedCalculate.cancel();
-      // If we were visually debouncing, but now skip, clear the indicator.
-      // (Unless mutation is pending, in which case spinner might still be relevant)
-      if (isDebouncing && !mutation.isPending) {
-        setIsDebouncing(false);
+    // 1. Derive the canonical state based *only* on the current searchParams
+    const derivedState = deriveStateFromParams(searchParams);
+
+    // 2. Sync local form state (currentFormData) ONLY IF it differs from the URL-derived state.
+    //    This ensures the form visually updates if the URL changes externally (e.g., back button).
+    if (JSON.stringify(currentFormData) !== JSON.stringify(derivedState)) {
+      // console.log("Syncing local form state (currentFormData) to match URL-derived state."); // Reduce noise
+      setCurrentFormData(derivedState);
+      // If the URL change *wasn't* triggered by our debouncedNavigate, cancel any pending debounce
+      // (This handles cases like back/forward button causing URL change during a debounce)
+      if (isDebouncing) {
+        // console.log("URL changed externally during debounce, cancelling pending navigation."); // Reduce noise
+        debouncedNavigate.cancel();
+        setIsDebouncing(false); // Clear debounce state as the URL is now the source of truth
       }
-      return;
     }
 
-    // Check if the current form data is actually different from the initial data
-    // derived from the current URL params. This prevents running the calculation
-    // immediately after the initial load effect runs or if the user reverts changes.
-    // Compare stringified versions for a deep comparison of values.
-    const isInitialState =
-      JSON.stringify(currentFormData) === JSON.stringify(initialFormData);
+    // 3. Determine if the dashboard should be shown based on the *current* params
+    const shouldShowDashboard = Object.keys(searchParams).some(
+      (key) =>
+        combinedSearchParamsSchema.shape.hasOwnProperty(key) &&
+        searchParams[key as keyof CombinedSearchParams] !== undefined
+    );
+    if (showDashboard !== shouldShowDashboard) {
+      // console.log(`Updating showDashboard state from ${showDashboard} to ${shouldShowDashboard}`); // Reduce noise
+      setShowDashboard(shouldShowDashboard);
+    }
 
-    // Only proceed if it's NOT the initial state derived directly from initial load/params
-    if (!isInitialState) {
-      console.log(
-        "Form data changed & not initial state, scheduling calculation and updating URL...",
-        currentFormData
-      );
-      // Set debouncing state to true to show visual indicator
-      setIsDebouncing(true);
-      // Schedule the debounced calculation
-      debouncedCalculate(currentFormData);
+    // 4. Trigger calculation IF the dashboard should be visible AND the derived state is valid
+    if (shouldShowDashboard) {
+      // console.log("Dashboard is visible, considering calculation trigger..."); // Reduce noise
+      // Optional: Add validation check here if deriveStateFromParams could produce invalid states
+      // e.g., if (!isValidState(derivedState)) { console.error("Invalid state derived"); return; }
 
-      // --- Update URL Silently ---
-      const searchParamsToSet: Partial<CombinedSearchParams> = {
-        batterySize: currentFormData.batterySize,
-        solarSize: currentFormData.solarSize,
-        usage: currentFormData.usage,
-        solarPanelDirection: currentFormData.solarPanelDirection.replace(
-          "-",
-          "_"
-        ) as CombinedSearchParams["solarPanelDirection"],
-        haveOrWillGetEv: currentFormData.haveOrWillGetEv,
-        homeOccupancyDuringWorkHours:
-          currentFormData.homeOccupancyDuringWorkHours,
-        needFinance: currentFormData.needFinance,
-      };
-      const filteredSearchParams = Object.entries(searchParamsToSet)
-        .filter(([_, value]) => value !== undefined)
-        .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
+      // Trigger mutation only if state is different from current mutation variables or not pending/successful
+      const isDifferentData =
+        !mutation.variables ||
+        JSON.stringify(mutation.variables) !== JSON.stringify(derivedState);
+      const shouldMutate =
+        (!mutation.isPending && !mutation.isSuccess) ||
+        (mutation.isSuccess && isDifferentData) ||
+        (mutation.isError && isDifferentData);
 
-      // Use URLSearchParams for robust comparison, ignoring key order
-      const currentSearchString = new URLSearchParams(
-        searchParams as any
-      ).toString();
-      const nextSearchString = new URLSearchParams(
-        filteredSearchParams as any
-      ).toString();
-
-      // Only navigate if the params derived from state are different from current URL params
-      if (currentSearchString !== nextSearchString) {
-        console.log("Updating URL params because they differ.");
-        navigate({ search: filteredSearchParams as any, replace: true });
-      } else {
-        console.log("URL params match, skipping navigate.");
-        // If URL doesn't need updating, but we scheduled a calculation,
-        // the isDebouncing flag remains true until the debounce fires/is cancelled.
+      if (shouldMutate) {
+        // console.log("Triggering calculation with derived state:", derivedState); // Reduce noise
+        setResults(null); // Clear previous results immediately before new calculation
+        mutation.mutate(derivedState);
+      } else if (mutation.isPending && !isDifferentData) {
+        // console.log("Skipping mutation: Already pending for the same data."); // Reduce noise
+      } else if (mutation.isSuccess && !isDifferentData) {
+        // console.log("Skipping mutation: Already succeeded with the same data."); // Reduce noise
+        // Ensure results are consistent if somehow cleared
+        if (!results) setResults(mutation.data);
       }
     } else {
-      console.log(
-        "Form data matches initial state, skipping debounced calculation and URL update."
-      );
-      // If the state reverted to initial, cancel any pending debounce and clear visual indicator.
-      debouncedCalculate.cancel();
-      setIsDebouncing(false);
+      // console.log("Dashboard not visible, skipping calculation."); // Reduce noise
+      // If dashboard is hidden, clear results
+      if (results) setResults(null);
+      // Cancel mutation if it was pending for a state that's no longer relevant?
+      // Cautious about this - might cancel valid background calcs if logic is complex.
+      // if (mutation.isPending) mutation.reset(); // Or specific cancel API if available
     }
 
-    // Cleanup function
-    return () => {
-      // console.log("Cleaning up main effect. Cancelling any pending debounce."); // Reduce console noise
-      debouncedCalculate.cancel();
-      // Do not reset isDebouncing here - let mutation callbacks handle it finally.
-    };
-  }, [
-    currentFormData, // Primary trigger for changes
-    initialFormData, // Needed for the isInitialState check
-    showDashboard,
-    debouncedCalculate,
-    navigate,
-    searchParams, // Need current params to decide if navigate is necessary
-    mutation.isPending, // Avoid running when calculation is pending
-    // Note: `isDebouncing` is NOT a dependency here
-  ]);
+    // No cleanup needed here specifically for debounce, handled elsewhere.
+  }, [searchParams, navigate]); // Primary dependency is searchParams. Add navigate for safety. Avoid adding state setters or mutation directly.
 
-  // Effect to run calculation ONCE when loaded with params (Initial Load)
-  useEffect(() => {
-    const hasAnyParams = Object.keys(searchParams).length > 0;
-    // If dashboard shown initially due to params, and no results yet, and no mutation active
-    // Check mutation status thoroughly to prevent re-running after first success/error
-    if (
-      showDashboardInitially &&
-      hasAnyParams &&
-      !results &&
-      !mutation.isPending && // Ensure no mutation is currently running
-      !mutation.isSuccess && // Ensure it hasn't already succeeded
-      !mutation.isError // Ensure it hasn't already failed
-    ) {
-      console.log("Initial load with params, calculating...", initialFormData);
-      // Don't set debouncing flag here, as this is an immediate calculation
-      mutation.mutate(initialFormData);
-    }
-    // No cleanup needed for this effect specifically related to debounce
-  }, [
-    showDashboardInitially,
-    initialFormData,
-    results,
-    searchParams,
-    // Add mutation status flags as dependencies to prevent re-triggering if they change
-    mutation.isPending,
-    mutation.isSuccess,
-    mutation.isError,
-    // Explicitly depend on the mutate function if needed, though status flags are usually enough
-    // mutation.mutate // Generally not needed if status flags are used
-  ]); // Dependencies
+  // --- Form Input Handler ---
+  // Updates local state immediately for UI, then triggers debounced URL update
+  const handleFormDataChange = useCallback(
+    (updatedData: SolarRoiCalculatorParams) => {
+      // Basic check to prevent unnecessary updates if object reference is same
+      if (updatedData === currentFormData) return;
 
-  // Simplified handler for form changes - just update state
-  const handleFormDataChange = (updatedData: SolarRoiCalculatorParams) => {
-    // Basic check to prevent unnecessary updates if object reference is same
-    if (updatedData === currentFormData) return;
-
-    // Deeper check for value equality
-    if (JSON.stringify(updatedData) !== JSON.stringify(currentFormData)) {
-      console.log("handleFormDataChange: Setting new form data", updatedData);
-      // Don't set debouncing here, let the useEffect handle it
-      setCurrentFormData(updatedData);
-    } else {
-      // console.log("handleFormDataChange: Data is the same, not updating state."); // Reduce noise
-    }
-  };
+      // Deeper check for value equality
+      if (JSON.stringify(updatedData) !== JSON.stringify(currentFormData)) {
+        // console.log("handleFormDataChange: Updating local state and scheduling URL update", updatedData); // Reduce noise
+        // Update local state immediately for responsive UI
+        setCurrentFormData(updatedData);
+        // Set debouncing flag visually ONLY if not already debouncing
+        // (prevents flicker if user types fast within debounce interval)
+        if (!isDebouncing) {
+          setIsDebouncing(true);
+        }
+        // Schedule the URL update (will reset isDebouncing when it fires)
+        debouncedNavigate(updatedData);
+      }
+    },
+    [currentFormData, debouncedNavigate, isDebouncing, setIsDebouncing]
+  ); // Add deps
 
   // Handler for guide completion - navigate with guide params
-  const handleGuideComplete = (
-    guideAnswers: Record<string, string | number>
-  ) => {
-    // Allow number for estimatedSolarSize etc.
-    console.log("Guide complete, navigating with params:", guideAnswers);
+  const handleGuideComplete = useCallback(
+    (guideAnswers: Record<string, string | number>) => {
+      // console.log("Guide complete, navigating with params:", guideAnswers); // Reduce noise
 
-    const paramsToNavigate = { ...guideAnswers };
-    // Remove estimatedSolarSize if present, as it's not a direct URL param in the schema
-    delete paramsToNavigate.estimatedSolarSize;
+      const paramsToNavigate: Partial<CombinedSearchParams> = {};
+      // Map guideAnswers keys to CombinedSearchParams keys directly
+      for (const key in guideAnswers) {
+        // Ensure the key from guideAnswers is actually part of our schema
+        if (combinedSearchParamsSchema.shape.hasOwnProperty(key)) {
+          // We explicitly exclude estimatedSolarSize as it's not a direct URL param
+          if (key !== "estimatedSolarSize") {
+            // Assign the value, relying on schema validation during navigation
+            paramsToNavigate[key as keyof CombinedSearchParams] = guideAnswers[
+              key
+            ] as any;
+          }
+        }
+      }
 
-    // Navigate will update searchParams, triggering initial state calculation and effects
-    // The search object keys should match the Zod schema keys
-    navigate({ to: "/", search: paramsToNavigate, replace: true });
-    setShowDashboard(true); // Explicitly show dashboard after guide
-  };
+      // console.log("Navigating from guide with params:", paramsToNavigate); // Reduce noise
+      // Navigate will update searchParams, triggering the main useEffect
+      // Replace ensures we don't add the guide step itself to history
+      navigate({ to: "/", search: paramsToNavigate, replace: true });
+      // No need to manually setShowDashboard(true) here; the main useEffect will handle it based on the new params.
+    },
+    [navigate]
+  ); // Add deps
 
   // Share button handler
   const handleShare = async () => {
     const url = new URL(window.location.href);
-    const params = new URLSearchParams();
-
-    // Add current form data to params
-    Object.entries(currentFormData).forEach(([key, value]) => {
-      params.set(key, String(value));
-    });
-
+    // Generate params based on the *current* form state displayed to the user
+    const params = new URLSearchParams(
+      formStateToSearchParams(currentFormData) as Record<string, string>
+    );
     url.search = params.toString();
 
     try {
@@ -418,6 +450,14 @@ function IndexComponent() {
       console.error("Failed to copy share URL:", err);
       // TODO: Show error feedback to user
     }
+  };
+
+  // Function to go back to the guide view (clear params)
+  const handleGoBack = () => {
+    // console.log("handleGoBack: Navigating to clear params."); // Reduce noise
+    // Clear all search params and navigate back to the root
+    navigate({ to: "/", search: {}, replace: true });
+    // The main useEffect will detect the empty params and set showDashboard(false) and clear results.
   };
 
   return (
@@ -432,6 +472,7 @@ function IndexComponent() {
             transition={{ duration: 0.5 }}
             className="max-w-2xl mx-auto" // Center the guide
           >
+            {/* Pass initial data if available from params (though usually guide starts clean) */}
             <SimplifiedGuide onComplete={handleGuideComplete} />
           </motion.div>
         ) : (
@@ -439,22 +480,17 @@ function IndexComponent() {
             key="dashboard"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }} // Slight delay for smoother feel
+            transition={{ duration: 0.5, delay: 0.1 }} // Slightly shorter delay
           >
             {/* Go Back Button */}
             <Button
               variant="ghost"
               size="sm"
-              className="mb-4 flex items-center space-x-2 text-muted-foreground hover:text-foreground"
+              onClick={handleGoBack} // Use the new handler
+              className="mb-4 -ml-2 flex items-center space-x-2 text-muted-foreground hover:text-foreground" // Adjust margin for alignment
             >
               <ArrowLeft className="h-4 w-4" />
-              <span
-                onClick={() => {
-                  window.location.href = "/";
-                }}
-              >
-                Start Form Again
-              </span>
+              <span>Start Over</span>
             </Button>
 
             {/* Main layout grid - swap the order of columns on desktop */}
@@ -462,94 +498,113 @@ function IndexComponent() {
               {/* Results Column - Now on left for desktop */}
               <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
                 {/* Loading/Initial State for Results Area */}
-                {!results && mutation.isPending && (
-                  <div className="text-center text-muted-foreground py-10">
-                    Calculating... Please wait.
+                {/* Show specific loading message only when mutation is actually pending */}
+                {mutation.isPending && (
+                  <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin inline mr-2" />
+                    Calculating...
                   </div>
                 )}
-                {!results &&
-                  !mutation.isPending &&
-                  !isDebouncing &&
-                  !mutation.isError && (
-                    <div className="text-center text-muted-foreground py-10">
-                      Adjust the inputs on the right to see your potential
-                      savings.
-                    </div>
-                  )}
-                {mutation.isError && !mutation.isPending && (
-                  <div className="text-center text-red-600 py-10">
-                    Calculation failed. Please check inputs or try again later.
+                {/* Show initial prompt if not loading and no results/error */}
+                {!mutation.isPending && !results && !mutation.isError && (
+                  <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
+                    Adjust the inputs on the right to calculate your potential
+                    savings.
+                  </div>
+                )}
+                {/* Error state */}
+                {!mutation.isPending && mutation.isError && (
+                  <div className="text-center text-red-600 py-10 min-h-[100px] flex flex-col items-center justify-center">
+                    <span>Calculation failed.</span>
+                    <span className="text-sm text-red-500 mt-1">
+                      {mutation.error?.message ||
+                        "Please check inputs or try again."}
+                    </span>
                   </div>
                 )}
 
-                {/* Results Display (only if results exist) */}
-                {results && (
+                {/* Results Display (only if results exist and not pending) */}
+                {!mutation.isPending && results && (
                   <>
                     {/* ScoreCards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <ScoreCard
-                        title="Total System Cost"
-                        value={formatCurrency(results.totalCost.amount)}
-                      />
-                      <ScoreCard
-                        title="Yearly Savings"
-                        value={formatCurrency(results.yearlySavings.amount)}
-                      />
-                      <ScoreCard
-                        title="Payback Period"
-                        value={`${results.paybackPeriod.years < 0 ? ">15" : results.paybackPeriod.years} Years`}
-                      />
-                      <ScoreCard
-                        title={`ROI (${results.roiPercentage.periodYears} Years)`}
-                        value={`${results.roiPercentage.percentage.toFixed(1)}%`}
-                      />
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <ScoreCard
+                          title="Total System Cost"
+                          value={formatCurrency(results.totalCost.amount)}
+                        />
+                        <ScoreCard
+                          title="Yearly Savings"
+                          value={formatCurrency(results.yearlySavings.amount)}
+                        />
+                        <ScoreCard
+                          title="Payback Period"
+                          value={`${results.paybackPeriod.years < 0 ? ">15" : results.paybackPeriod.years} Years`}
+                        />
+                        <ScoreCard
+                          title={`ROI (${results.roiPercentage.periodYears} Years)`}
+                          value={`${results.roiPercentage.percentage.toFixed(1)}%`}
+                        />
+                      </div>
+                    </motion.div>
 
                     {/* Chart */}
-                    <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm relative">
-                      {/* Debounce/Loading Spinner Overlay with Animation */}
-                      <AnimatePresence>
-                        {/* Show spinner if debouncing OR if the mutation is pending */}
-                        {(isDebouncing || mutation.isPending) && (
-                          <motion.div
-                            key="debounce-spinner"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.2 }} // Quick fade
-                            className="absolute inset-0 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-lg z-10"
-                          >
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      <h2 className="text-xl font-semibold mb-4 text-center">
-                        Cumulative Savings Over Time
-                      </h2>
-                      <div className="mt-2 md:mt-0 relative">
-                        <RoiChart chartData={results.roiChartData} />
-                        {results.roiChartData.breakEvenYear !== null &&
-                          results.roiChartData.breakEvenYear > 0 && (
-                            <p className="text-sm text-muted-foreground mt-4 text-center">
-                              Estimated break-even point around year{" "}
-                              {results.roiChartData.breakEvenYear}.
-                            </p>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.2 }}
+                    >
+                      <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm relative">
+                        {/* Debounce Indicator Overlay (Subtle) */}
+                        <AnimatePresence>
+                          {isDebouncing && (
+                            <motion.div
+                              key="debounce-indicator"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.1 }}
+                              className="absolute top-2 right-2 p-1.5 bg-primary/10 rounded-full z-10"
+                            >
+                              <Loader2 className="h-4 w-4 animate-spin text-primary/80" />
+                            </motion.div>
                           )}
-                        {results.roiChartData.breakEvenYear !== null &&
-                          results.roiChartData.breakEvenYear < 0 && (
-                            <p className="text-sm text-muted-foreground mt-4 text-center">
-                              Payback period is longer than the system lifespan
-                              ({results.roiPercentage.periodYears} years).
-                            </p>
-                          )}
+                        </AnimatePresence>
+                        <h2 className="text-xl font-semibold mb-4 text-center">
+                          Cumulative Savings Over Time
+                        </h2>
+                        <div className="mt-2 md:mt-0 relative">
+                          {/* Ensure chartData is passed correctly */}
+                          <RoiChart chartData={results.roiChartData} />
+                          {results.roiChartData.breakEvenYear !== null &&
+                            results.roiChartData.breakEvenYear > 0 && (
+                              <p className="text-sm text-muted-foreground mt-4 text-center">
+                                Estimated break-even point around year{" "}
+                                {results.roiChartData.breakEvenYear}.
+                              </p>
+                            )}
+                          {results.roiChartData.breakEvenYear !== null &&
+                            results.roiChartData.breakEvenYear < 0 && (
+                              <p className="text-sm text-muted-foreground mt-4 text-center">
+                                Payback period may be longer than the system
+                                lifespan ({results.roiPercentage.periodYears}{" "}
+                                years).
+                              </p>
+                            )}
+                        </div>
                       </div>
-                    </div>
+                    </motion.div>
                   </>
                 )}
               </div>
 
               {/* Inputs Column - Now on right for desktop */}
               <div className="lg:col-span-1 space-y-6 order-1 lg:order-2">
+                {/* Pass the local state which is kept in sync with URL */}
                 <RoiInputForm
                   formData={currentFormData}
                   onFormDataChange={handleFormDataChange}
@@ -557,8 +612,9 @@ function IndexComponent() {
                 {/* Share Button */}
                 <Button
                   onClick={handleShare}
-                  disabled={shareStatus === "copied"}
+                  disabled={shareStatus === "copied" || !results} // Disable if no results to share
                   className="w-full"
+                  variant="outline" // Less prominent than main action
                 >
                   <Share2Icon className="mr-2 h-4 w-4" />
                   {shareStatus === "copied"
@@ -579,14 +635,13 @@ function IndexComponent() {
         <AffiliateBanner />
       </div>
 
-      {showDashboard && results && (
+      {/* Show footer only when dashboard is visible and has results */}
+      {showDashboard && results && !mutation.isPending && (
         <footer className="mt-12 pt-6 border-t border-border/40">
           <p className="text-center text-sm text-muted-foreground">
             Disclaimer: This calculator provides approximate estimations based
-            on standard assumptions and the inputs provided. While we strive for
-            accuracy and ease of understanding to aid purchasing decisions,
-            these results should be used as a guide only and supplemented with
-            more detailed, professional assessments for final decisions.
+            on standard assumptions and the inputs provided. Results should be
+            used as a guide only and supplemented with professional assessments.
           </p>
         </footer>
       )}
