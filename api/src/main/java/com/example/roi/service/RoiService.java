@@ -95,6 +95,7 @@ public class RoiService {
         // Get initial total cost of the system
         double initialCost = (request.getBatterySize() * BATTERY_COST_PER_KWH)
                 + (request.getSolarSize() * SOLAR_COST_PER_KW);
+                
         TotalCost totalCost = new TotalCost(initialCost);
         logger.info("Initial system cost: £{}", String.format("%.2f", initialCost));
 
