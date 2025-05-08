@@ -1,4 +1,5 @@
-import requests
+import asyncio
+import aiohttp
 import itertools
 import time
 from pprint import pprint
@@ -59,52 +60,74 @@ def generate_test_cases(min_tests=100, max_tests=200):
 test_cases = generate_test_cases()
 print(f"Generated {len(test_cases)} test cases")
 
-# Function to make API requests
-def test_api(test_cases):
+# Function to make a single API request asynchronously
+async def test_single_case(session, payload, index, total, semaphore):
+    async with semaphore:  # Limit concurrent requests
+        try:
+            print(f"Running test {index+1}/{total}")
+            print(f"Payload: {payload}")
+            
+            async with session.post(base_url, headers=headers, json=payload, timeout=10) as response:
+                response_text = await response.text()
+                
+                if response.status == 200:
+                    print(f"Success! Status code: {response.status}")
+                    # Print summary of response (first level only for readability)
+                    response_data = await response.json()
+                    summary = {k: (v if not isinstance(v, (dict, list)) else "...") for k, v in response_data.items()}
+                    print(f"Response summary: {summary}")
+                    return {"success": True, "payload": payload}
+                else:
+                    error_info = {
+                        "status_code": response.status,
+                        "payload": payload,
+                        "response": response_text[:100] + "..." if len(response_text) > 100 else response_text
+                    }
+                    print(f"Failed! Status code: {response.status}")
+                    print(f"Error: {error_info['response']}")
+                    return {"success": False, "error": error_info}
+                
+        except Exception as e:
+            error_info = {
+                "exception": str(e),
+                "payload": payload
+            }
+            print(f"Exception: {str(e)}")
+            return {"success": False, "error": error_info}
+        finally:
+            print("-" * 50)
+
+# Function to make API requests in parallel
+async def test_api_async(test_cases, max_concurrent=10):
     results = {
         "successful": 0,
         "failed": 0,
         "errors": []
     }
     
-    for i, payload in enumerate(test_cases):
-        try:
-            print(f"Running test {i+1}/{len(test_cases)}")
-            print(f"Payload: {payload}")
+    # Create a semaphore to limit concurrent requests
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async with aiohttp.ClientSession() as session:
+        tasks = []
+        for i, payload in enumerate(test_cases):
+            # Add a small delay to avoid creating all tasks at once
+            if i > 0 and i % max_concurrent == 0:
+                await asyncio.sleep(0.1)
             
-            response = requests.post(base_url, headers=headers, json=payload, timeout=10)
-            
-            if response.status_code == 200:
+            task = asyncio.create_task(test_single_case(session, payload, i, len(test_cases), semaphore))
+            tasks.append(task)
+        
+        # Wait for all tasks to complete
+        all_results = await asyncio.gather(*tasks)
+        
+        # Process results
+        for result in all_results:
+            if result["success"]:
                 results["successful"] += 1
-                print(f"Success! Status code: {response.status_code}")
-                # Print summary of response (first level only for readability)
-                response_data = response.json()
-                summary = {k: (v if not isinstance(v, (dict, list)) else "...") for k, v in response_data.items()}
-                print(f"Response summary: {summary}")
             else:
                 results["failed"] += 1
-                error_info = {
-                    "status_code": response.status_code,
-                    "payload": payload,
-                    "response": response.text[:100] + "..." if len(response.text) > 100 else response.text
-                }
-                results["errors"].append(error_info)
-                print(f"Failed! Status code: {response.status_code}")
-                print(f"Error: {error_info['response']}")
-            
-            # Sleep briefly to avoid overloading the API
-            time.sleep(0.5)
-            
-        except Exception as e:
-            results["failed"] += 1
-            error_info = {
-                "exception": str(e),
-                "payload": payload
-            }
-            results["errors"].append(error_info)
-            print(f"Exception: {str(e)}")
-            
-        print("-" * 50)
+                results["errors"].append(result["error"])
     
     return results
 
@@ -113,7 +136,8 @@ if __name__ == "__main__":
     print(f"Starting API tests with {len(test_cases)} test cases...")
     start_time = time.time()
     
-    results = test_api(test_cases)
+    # Run the async test function
+    results = asyncio.run(test_api_async(test_cases))
     
     elapsed_time = time.time() - start_time
     
