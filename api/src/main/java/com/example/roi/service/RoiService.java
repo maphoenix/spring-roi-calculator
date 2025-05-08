@@ -160,14 +160,19 @@ public class RoiService {
         logger.info("===== YEAR-BY-YEAR CALCULATION for Tariff: {} =====", selectedTariff.getName());
 
         for (int year = 1; year <= NUMBER_OF_YEARS_TO_TRACK; year++) {
-
             double batterySavings = 0;
-            
+            double degradationFactor = 1.0;
+            double effectiveBatteryCapacity = 0.0;
+            double shiftable = 0.0;
             if (isBatterySelected) {
+                degradationFactor = calculateBatteryDegradation(year);
+                effectiveBatteryCapacity = usableBatteryMaxCapacity * degradationFactor;
+                shiftable = Math.min(effectiveBatteryCapacity * 365, request.getUsage());
                 batterySavings = calculateBatterySavings(year, usableBatteryMaxCapacity, request, selectedTariff);
             }
-            
-            double solarSavings = (solarUsed * selectedTariff.getPeakRate()) + (solarExport * selectedTariff.getExportRate());
+            double solarSavingsSelfUse = solarUsed * selectedTariff.getPeakRate();
+            double solarSavingsExport = solarExport * selectedTariff.getExportRate();
+            double solarSavings = solarSavingsSelfUse + solarSavingsExport;
 
             double yearTotalSavings = batterySavings + solarSavings;
             yearlySavingsList.add(yearTotalSavings);
@@ -178,6 +183,35 @@ public class RoiService {
             // Add data point for the chart
             chartDataPoints.add(new RoiChartDataPoint(year, cumulativeSavings));
 
+            // Debug logging with clear prefix
+            if (isBatterySelected) {
+                logger.debug(
+                    "[SOLAR+BATT] Year {}: batterySavings=£{}, degradationFactor={}, effectiveBatteryCapacity={}kWh, shiftable={}kWh, solarUsed={}kWh, solarExport={}kWh, solarSavings(self-use)=£{}, solarSavings(export)=£{}, yearTotalSavings=£{}, cumulativeSavings=£{}",
+                    year,
+                    String.format("%.2f", batterySavings),
+                    String.format("%.2f", degradationFactor),
+                    String.format("%.2f", effectiveBatteryCapacity),
+                    String.format("%.2f", shiftable),
+                    String.format("%.2f", solarUsed),
+                    String.format("%.2f", solarExport),
+                    String.format("%.2f", solarSavingsSelfUse),
+                    String.format("%.2f", solarSavingsExport),
+                    String.format("%.2f", yearTotalSavings),
+                    String.format("%.2f", cumulativeSavings)
+                );
+            } else {
+                logger.debug(
+                    "[SOLAR] Year {}: solarUsed={}kWh, solarExport={}kWh, solarSavings(self-use)=£{}, solarSavings(export)=£{}, yearTotalSavings=£{}, cumulativeSavings=£{}",
+                    year,
+                    String.format("%.2f", solarUsed),
+                    String.format("%.2f", solarExport),
+                    String.format("%.2f", solarSavingsSelfUse),
+                    String.format("%.2f", solarSavingsExport),
+                    String.format("%.2f", yearTotalSavings),
+                    String.format("%.2f", cumulativeSavings)
+                );
+            }
+
             // Check for payback year
             if (paybackYearNum == null && cumulativeSavings > 0) {
                 paybackYearNum = year;
@@ -187,8 +221,8 @@ public class RoiService {
             if (year == 1 || year % 5 == 0 || year == MAX_BATTERY_YEARS) {
                 logger.info("Year {}: Annual savings £{}, Cumulative £{}",
                         year,
-                    String.format("%.2f", yearTotalSavings),
-                    String.format("%.2f", cumulativeSavings));
+                        String.format("%.2f", yearTotalSavings),
+                        String.format("%.2f", cumulativeSavings));
             }
         }
 
