@@ -15,6 +15,7 @@ import com.example.roi.model.RoiChartData;
 import com.example.roi.model.RoiChartDataPoint;
 import com.example.roi.model.RoiPercentage;
 import com.example.roi.model.RoiRequest;
+import com.example.roi.model.RoiYearlyBreakdown;
 import com.example.roi.model.Tariff;
 import com.example.roi.model.TotalCost;
 import com.example.roi.model.YearlySavings;
@@ -111,7 +112,7 @@ public class RoiService {
     public RoiCalculationResponse calculate(RoiRequest request) {
         logger.info(request.toString());
 
-        boolean isBatterySelected = (request.getBatterySize() > 0) ? true : false;
+        boolean isBatterySelected = request.getBatterySize() > 0;
         boolean isHomeOccupancyDuringWorkHours = request.isHomeOccupancyDuringWorkHours();
 
         // Get initial total cost of the system
@@ -122,10 +123,7 @@ public class RoiService {
         double originalBatterySize = request.getBatterySize();
         double usableBatteryMaxCapacity = originalBatterySize * BATTERY_USABLE_PERCENTAGE;
 
-
-
         // Solar generation and usage components (constant over years)
-        // NOTE: Solar direction and other request parameters are not yet used in this simplified calculation
         double actualSolarGeneration = SOLAR_GENERATION_FACTOR * getSolarDirectionOutputMultiplier(request.getSolarPanelDirection());
         double solarGen = request.getSolarSize() * actualSolarGeneration;
 
@@ -154,6 +152,7 @@ public class RoiService {
         // --- Year-by-Year Calculation for the selected tariff ---
         List<Double> yearlySavingsList = new ArrayList<>();
         List<RoiChartDataPoint> chartDataPoints = new ArrayList<>();
+        List<RoiYearlyBreakdown> yearlyBreakdowns = request.isIncludePdfBreakdown() ? new ArrayList<>() : null;
         double     cumulativeSavings = -initialCost; // Start with negative initial cost
         Integer paybackYearNum = null; // Use Integer to allow null
 
@@ -183,8 +182,25 @@ public class RoiService {
             // Add data point for the chart
             chartDataPoints.add(new RoiChartDataPoint(year, cumulativeSavings));
 
+            // Collect breakdown if requested
+            if (yearlyBreakdowns != null) {
+                yearlyBreakdowns.add(new RoiYearlyBreakdown(
+                    year,
+                    usableBatteryMaxCapacity,
+                    degradationFactor,
+                    shiftable,
+                    batterySavings,
+                    solarUsed,
+                    solarExport,
+                    solarSavingsSelfUse,
+                    solarSavingsExport,
+                    yearTotalSavings,
+                    cumulativeSavings
+                ));
+            }
+
             // Debug logging with clear prefix
-            if (isBatterySelected) {
+            if (isBatterySelected == true) {
                 logger.debug(
                     "[SOLAR+BATT] Year {}: batterySavings=£{}, degradationFactor={}, effectiveBatteryCapacity={}kWh, shiftable={}kWh, solarUsed={}kWh, solarExport={}kWh, solarSavings(self-use)=£{}, solarSavings(export)=£{}, yearTotalSavings=£{}, cumulativeSavings=£{}",
                     year,
@@ -263,7 +279,8 @@ public class RoiService {
                 monthlySavings,
                 paybackPeriod,
                 roiChartData,
-                roiPercentage
+                roiPercentage,
+                yearlyBreakdowns
         );
     }
 

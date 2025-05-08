@@ -30,6 +30,7 @@ public class RoiRequest {
     private double batterySize = 17.5;
     private double usage = 4000;
     private double solarSize = 4.0;
+    private boolean includePdfBreakdown = false;
 
     public RoiRequest() {
         // Empty constructor
@@ -94,6 +95,15 @@ public class RoiRequest {
         this.solarSize = solarSize;
     }
 
+    @JsonProperty("includePdfBreakdown")
+    public boolean isIncludePdfBreakdown() {
+        return includePdfBreakdown;
+    }
+
+    public void setIncludePdfBreakdown(boolean includePdfBreakdown) {
+        this.includePdfBreakdown = includePdfBreakdown;
+    }
+
     @Override
     public String toString() {
         return "RoiRequest{" +
@@ -103,9 +113,8 @@ public class RoiRequest {
                 ", needFinance=" + isNeedFinance() +
                 ", solarSize=" + getSolarSize() +
                 ", batterySize=" + getBatterySize() +
-                ", usage=" + getUsage();
-
-
+                ", usage=" + getUsage() +
+                ", includePdfBreakdown=" + isIncludePdfBreakdown();
     }
 
 }

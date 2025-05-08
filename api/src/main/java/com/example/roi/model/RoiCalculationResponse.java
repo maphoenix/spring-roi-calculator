@@ -1,5 +1,7 @@
 package com.example.roi.model;
 
+import java.util.List;
+
 // No List import needed here
 // No need to import classes from the same package
 // This response class aggregates all the calculated ROI metrics
@@ -12,16 +14,23 @@ public class RoiCalculationResponse {
     private final PaybackPeriod paybackPeriod; // Made final
     private final RoiChartData roiChartData; // Made final
     private final RoiPercentage roiPercentage; // Made final
+    private final List<RoiYearlyBreakdown> yearlyBreakdown;
 
     // Constructor
     public RoiCalculationResponse(TotalCost totalCost, YearlySavings yearlySavings, MonthlySavings monthlySavings,
             PaybackPeriod paybackPeriod, RoiChartData roiChartData, RoiPercentage roiPercentage) {
+        this(totalCost, yearlySavings, monthlySavings, paybackPeriod, roiChartData, roiPercentage, null);
+    }
+
+    public RoiCalculationResponse(TotalCost totalCost, YearlySavings yearlySavings, MonthlySavings monthlySavings,
+            PaybackPeriod paybackPeriod, RoiChartData roiChartData, RoiPercentage roiPercentage, List<RoiYearlyBreakdown> yearlyBreakdown) {
         this.totalCost = totalCost;
         this.yearlySavings = yearlySavings;
         this.monthlySavings = monthlySavings;
         this.paybackPeriod = paybackPeriod;
         this.roiChartData = roiChartData;
         this.roiPercentage = roiPercentage;
+        this.yearlyBreakdown = yearlyBreakdown;
     }
 
     // Getters
@@ -39,7 +48,6 @@ public class RoiCalculationResponse {
 
     public PaybackPeriod getPaybackPeriod() {
         return paybackPeriod;
-
     }
 
     public RoiChartData getRoiChartData() {
@@ -48,5 +56,9 @@ public class RoiCalculationResponse {
 
     public RoiPercentage getRoiPercentage() {
         return roiPercentage;
+    }
+
+    public List<RoiYearlyBreakdown> getYearlyBreakdown() {
+        return yearlyBreakdown;
     }
 }

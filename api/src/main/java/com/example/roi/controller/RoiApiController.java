@@ -1,8 +1,18 @@
 package com.example.roi.controller;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,12 +20,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.roi.model.RoiCalculationResponse;
+import com.example.roi.model.RoiCalculationResponseWithPdfFlat;
 import com.example.roi.model.RoiRequest;
+import com.example.roi.service.RoiPdfReportService;
 import com.example.roi.service.RoiService;
+import com.lowagie.text.DocumentException;
 
 /**
  * RESTful API controller for ROI calculations. Provides endpoints for returning
- * ROI metrics for visualization.
+ * ROI metrics for visualization and PDF report generation.
  */
 @RestController
 @RequestMapping("/api/roi")
@@ -23,38 +36,39 @@ public class RoiApiController {
 
     @Autowired
     private RoiService roiService;
+    @Autowired
+    private RoiPdfReportService roiPdfReportService;
 
     /**
-     * Calculate ROI with aggregated metrics for visualization
+     * Calculate ROI with aggregated metrics for visualization and PDF report
      *
-     * @param request Contains battery size, usage, solar size, and other user
-     * inputs
-     * @return RoiCalculationResponse object with various ROI metrics
+     * @param request Contains battery size, usage, solar size, and other user inputs
+     * @return RoiCalculationResponseWithPdfFlat object with various ROI metrics and pdfUrl
      */
     @PostMapping("/calculate")
-    public ResponseEntity<RoiCalculationResponse> calculateRoi(@RequestBody RoiRequest request) {
-        try {
-            RoiCalculationResponse response = roiService.calculate(request);
-            if (response == null) {
-                // Handle cases where calculation couldn't be performed (e.g., no tariffs)
-                return ResponseEntity.internalServerError().build(); // Or badRequest, depending on cause
-            }
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            // Log the exception details for debugging
-            // logger.error("Error during ROI calculation", e);
-            return ResponseEntity.internalServerError().build(); // Use 500 for unexpected errors
+    public ResponseEntity<RoiCalculationResponseWithPdfFlat> calculateRoi(@RequestBody RoiRequest request) throws IOException, DocumentException {
+        RoiCalculationResponse response = roiService.calculate(request);
+        String pdfUrl = null;
+        if (request.isIncludePdfBreakdown()) {
+            String reportId = UUID.randomUUID().toString();
+            roiPdfReportService.generateRoiReportToFile(response, reportId);
+            pdfUrl = "/api/roi/reports/roi-report-" + reportId + ".pdf";
         }
+        RoiCalculationResponseWithPdfFlat flat = new RoiCalculationResponseWithPdfFlat(
+            response.getTotalCost(),
+            response.getYearlySavings(),
+            response.getMonthlySavings(),
+            response.getPaybackPeriod(),
+            response.getRoiChartData(),
+            response.getRoiPercentage(),
+            response.getYearlyBreakdown(),
+            pdfUrl
+        );
+        return ResponseEntity.ok(flat);
     }
 
     /**
-     * GET endpoint for quickly viewing ROI data for debugging with default
-     * parameters
-     *
-     * @param batterySize Battery size in kWh
-     * @param usage Annual electricity usage in kWh
-     * @param solarSize Solar panel size in kW
-     * @return RoiCalculationResponse object with ROI metrics
+     * GET endpoint for quickly viewing ROI data for debugging with default parameters
      */
     @GetMapping("/timeseries")
     public ResponseEntity<RoiCalculationResponse> getTimeSeriesData(
@@ -79,5 +93,21 @@ public class RoiApiController {
             // logger.error("Error during ROI calculation (GET endpoint)", e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * Endpoint to serve generated PDF reports from /tmp
+     */
+    @GetMapping("/reports/{filename:.+}")
+    public ResponseEntity<Resource> getReport(@PathVariable String filename) throws IOException {
+        Path file = Paths.get("/tmp").resolve(filename);
+        Resource resource = new UrlResource(file.toUri());
+        if (!resource.exists()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(resource);
     }
 }
