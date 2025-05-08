@@ -1,11 +1,18 @@
 package com.example.roi.service;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 
+import javax.imageio.ImageIO;
+
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.data.category.DefaultCategoryDataset;
 import org.springframework.stereotype.Service;
 
 import com.example.roi.model.RoiCalculationResponse;
@@ -14,8 +21,11 @@ import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
+import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 
 @Service
@@ -39,6 +49,9 @@ public class RoiPdfReportService {
 
         // Assumptions & Constants
         addAssumptionsSection(document);
+
+        // Installation Cost Section
+        addInstallationCostSection(document, response);
 
         // Input Summary
         addInputSummary(document, response);
@@ -100,6 +113,19 @@ public class RoiPdfReportService {
         document.add(new Paragraph(" "));
     }
 
+    private void addInstallationCostSection(Document document, RoiCalculationResponse response) throws DocumentException {
+        document.add(new Paragraph("Installation Cost Assumptions", new Font(Font.HELVETICA, 14, Font.BOLD, new Color(34, 139, 34))));
+        if (response.getTotalCost() != null) {
+            document.add(new Paragraph(String.format("- Assumed total installation cost: £%.2f %s",
+                response.getTotalCost().getAmount(),
+                response.getTotalCost().getCurrency() != null ? response.getTotalCost().getCurrency() : "GBP"
+            )));
+        } else {
+            document.add(new Paragraph("- Installation cost data not available."));
+        }
+        document.add(new Paragraph(" "));
+    }
+
     private void addInputSummary(Document document, RoiCalculationResponse response) throws DocumentException {
         document.add(new Paragraph("Input Summary", new Font(Font.HELVETICA, 16, Font.BOLD, new Color(34, 139, 34))));
         // TODO: Add a table or list of all input values from response
@@ -107,8 +133,43 @@ public class RoiPdfReportService {
     }
 
     private void addCalculationBreakdown(Document document, RoiCalculationResponse response) throws DocumentException {
-        document.add(new Paragraph("Calculation Breakdown", new Font(Font.HELVETICA, 16, Font.BOLD, new Color(34, 139, 34))));
-        // TODO: Add a table with year-by-year breakdown
+        document.add(new Paragraph("Calculation Breakdown (Yearly Table)", new Font(Font.HELVETICA, 16, Font.BOLD, new Color(34, 139, 34))));
+        document.add(new Paragraph(" "));
+        if (response.getYearlyBreakdown() != null && !response.getYearlyBreakdown().isEmpty()) {
+            PdfPTable table = new PdfPTable(10);
+            table.setWidthPercentage(100);
+            String[] headers = {
+                "Year", "Usable Battery (kWh)", "Degradation", "Shiftable (kWh)", "Battery Savings (£)",
+                "Solar Used (kWh)", "Solar Export (kWh)", "Solar Savings (£)", "Yearly Total (£)", "Costs Outstanding (£)"
+            };
+            Font headerFont = new Font(Font.HELVETICA, 10, Font.BOLD, new Color(34, 139, 34));
+            Font cellFont = new Font(Font.HELVETICA, 9);
+            for (String header : headers) {
+                PdfPCell cell = new PdfPCell(new Paragraph(header, headerFont));
+                cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                cell.setBackgroundColor(new Color(220, 255, 220));
+                table.addCell(cell);
+            }
+            for (var yb : response.getYearlyBreakdown()) {
+                table.addCell(new Paragraph(String.valueOf(yb.getYear()), cellFont));
+                table.addCell(new Paragraph(String.format("%.2f", yb.getUsableBatteryMaxCapacity()), cellFont));
+                table.addCell(new Paragraph(String.format("%.2f", yb.getDegradationFactor()), cellFont));
+                table.addCell(new Paragraph(String.format("%.2f", yb.getShiftable()), cellFont));
+                table.addCell(new Paragraph(String.format("£%d", Math.round(yb.getBatterySavings())), cellFont));
+                table.addCell(new Paragraph(String.format("%.2f", yb.getSolarUsed()), cellFont));
+                table.addCell(new Paragraph(String.format("%.2f", yb.getSolarExport()), cellFont));
+                double solarTotal = yb.getSolarUsed() + yb.getSolarExport();
+                int usedPct = solarTotal > 0 ? (int)Math.round(100.0 * yb.getSolarUsed() / solarTotal) : 0;
+                int exportPct = solarTotal > 0 ? (int)Math.round(100.0 * yb.getSolarExport() / solarTotal) : 0;
+                table.addCell(new Paragraph(String.format("£%d", Math.round(yb.getSolarSavingsSelfUse() + yb.getSolarSavingsExport())), cellFont));
+                table.addCell(new Paragraph(String.format("£%d", Math.round(yb.getYearlyTotalSavings())), cellFont));
+                table.addCell(new Paragraph(String.format("£%d", Math.round(yb.getCumulativeSavings())), cellFont));
+            }
+            document.add(table);
+            document.add(new Paragraph("Note: All cost values in this table are rounded to the nearest pound.", new Font(Font.HELVETICA, 7, Font.ITALIC, Color.DARK_GRAY)));
+        } else {
+            document.add(new Paragraph("No yearly breakdown data available."));
+        }
         document.add(new Paragraph(" "));
     }
 
@@ -137,16 +198,63 @@ public class RoiPdfReportService {
     }
 
     private void addWorkedExampleYear(Document document, RoiChartDataPoint dataPoint, int year, RoiCalculationResponse response) throws DocumentException {
-        // In a real implementation, you would extract all relevant values for the year.
-        // Here, we show the cumulative savings and year as an example.
         document.add(new Paragraph(String.format("  Year: %d", year)));
-        document.add(new Paragraph(String.format("  Cumulative Savings: £%.2f", dataPoint.getCumulativeSavings())));
+        document.add(new Paragraph(String.format("  Costs Outstanding: £%.2f", dataPoint.getCumulativeSavings())));
+        // Add detailed working out for Year 1 if available
+        if (year == 1 && response.getYearlyBreakdown() != null && !response.getYearlyBreakdown().isEmpty()) {
+            var yb = response.getYearlyBreakdown().get(0);
+            document.add(new Paragraph(String.format("    Costs Outstanding: £%d", Math.round(yb.getCumulativeSavings()))));
+            // Add blank line before working out
+            document.add(new Paragraph(" "));
+            // 'Working Out (Year 1):' in regular font size (not bold)
+            document.add(new Paragraph("  Working Out (Year 1):", new Font(Font.HELVETICA, 10)));
+            // Data lines
+            document.add(new Paragraph(String.format("    Usable Battery Max Capacity: %.2f kWh", yb.getUsableBatteryMaxCapacity())));
+            document.add(new Paragraph(String.format("    Degradation Factor: %.2f", yb.getDegradationFactor())));
+            document.add(new Paragraph(String.format("    Shiftable: %.2f kWh", yb.getShiftable())));
+            double solarTotal = yb.getSolarUsed() + yb.getSolarExport();
+            int usedPct = solarTotal > 0 ? (int)Math.round(100.0 * yb.getSolarUsed() / solarTotal) : 0;
+            int exportPct = solarTotal > 0 ? (int)Math.round(100.0 * yb.getSolarExport() / solarTotal) : 0;
+            document.add(new Paragraph(String.format("    Solar Used: %.2f kWh (%d%%)", yb.getSolarUsed(), usedPct)));
+            document.add(new Paragraph(String.format("    Solar Export: %.2f kWh (%d%%)", yb.getSolarExport(), exportPct)));
+            // Add blank line for clarity
+            document.add(new Paragraph(" "));
+            // Savings lines
+            document.add(new Paragraph(String.format("    Battery Savings: £%d", Math.round(yb.getBatterySavings()))));
+            document.add(new Paragraph(String.format("    Solar Savings (self-use): £%d", Math.round(yb.getSolarSavingsSelfUse()))));
+            document.add(new Paragraph(String.format("    Solar Savings (export): £%d", Math.round(yb.getSolarSavingsExport()))));
+            document.add(new Paragraph(String.format("    Costs Outstanding: £%d", Math.round(yb.getCumulativeSavings()))));
+            // Total savings in regular font size (12pt, not bold)
+            document.add(new Paragraph(String.format("    Yearly Total Savings: £%d", Math.round(yb.getYearlyTotalSavings())), new Font(Font.HELVETICA, 12)));
+        }
         // TODO: Add more detailed breakdown if available (battery savings, solar savings, etc.)
     }
 
     private void addCharts(Document document, RoiCalculationResponse response) throws IOException, DocumentException {
-        // TODO: Generate and embed charts using JFreeChart
-        document.add(new Paragraph("Charts", new Font(Font.HELVETICA, 16, Font.BOLD, new Color(34, 139, 34))));
+        document.add(new Paragraph("Cumulative Savings Chart", new Font(Font.HELVETICA, 16, Font.BOLD, new Color(34, 139, 34))));
+        document.add(new Paragraph(" "));
+        if (response.getYearlyBreakdown() != null && !response.getYearlyBreakdown().isEmpty()) {
+            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+            for (var yb : response.getYearlyBreakdown()) {
+                dataset.addValue(yb.getCumulativeSavings(), "Cumulative Savings", String.valueOf(yb.getYear()));
+            }
+            JFreeChart chart = ChartFactory.createLineChart(
+                "Cumulative Savings Over Time",
+                "Year",
+                "Cumulative Savings (£)",
+                dataset,
+                PlotOrientation.VERTICAL,
+                false, true, false
+            );
+            BufferedImage chartImage = chart.createBufferedImage(600, 300);
+            java.io.ByteArrayOutputStream chartBaos = new java.io.ByteArrayOutputStream();
+            ImageIO.write(chartImage, "png", chartBaos);
+            Image chartPdfImage = Image.getInstance(chartBaos.toByteArray());
+            chartPdfImage.setAlignment(Element.ALIGN_CENTER);
+            document.add(chartPdfImage);
+        } else {
+            document.add(new Paragraph("No chart data available."));
+        }
         document.add(new Paragraph(" "));
     }
 
