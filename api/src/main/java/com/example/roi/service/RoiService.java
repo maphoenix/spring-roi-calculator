@@ -45,6 +45,8 @@ public class RoiService {
     private static final double BATTERY_COST_PER_KWH = 500.0;      // Cost per kWh of battery
     private static final double SOLAR_COST_PER_KW = 1500.0;        // Cost per kW of solar
 
+    private static final int NUMBER_OF_YEARS_TO_TRACK = 15;
+
     @Autowired
     private TariffService tariffService;
 
@@ -80,6 +82,26 @@ public class RoiService {
     }
 
     /**
+     * Calculate battery savings for a specific year Based on the
+     * fact that batteries are at 70% capacity after 10 years and we assume they
+     * won't live longer than 15 years
+     *
+     * @param year The year for which to calculate savings
+     * @param usableBatteryMaxCapacity The maximum usable capacity of the battery
+     * @param request The RoiRequest containing battery size, usage, and solar size information
+     * @param selectedTariff The selected tariff for the calculation
+     * @return The calculated battery savings
+     */
+    private double calculateBatterySavings(int year, double usableBatteryMaxCapacity, RoiRequest request, Tariff selectedTariff) {
+        double degradationFactor = calculateBatteryDegradation(year);
+        double effectiveBatteryCapacity = usableBatteryMaxCapacity * degradationFactor;
+        // Shiftable energy is limited by daily battery capacity over a year or total usage
+        double shiftable = Math.min(effectiveBatteryCapacity * 365, request.getUsage());
+        // Battery savings (arbitrage)
+        return shiftable * (selectedTariff.getPeakRate() - selectedTariff.getOffpeakRate()) * BATTERY_EFFICIENCY;
+    }
+
+    /**
      * Calculate ROI savings based on battery and solar parameters for a single
      * chosen tariff.
      *
@@ -87,20 +109,20 @@ public class RoiService {
      * @return Response containing aggregated ROI metrics
      */
     public RoiCalculationResponse calculate(RoiRequest request) {
-        logger.info("Calculating ROI for request: Battery={}kWh, Solar={}kW, Usage={}kWh, Direction={}, EV={}, HomeDuringDay={}, Finance={}",
-                request.getBatterySize(), request.getSolarSize(), request.getUsage(),
-                request.getSolarPanelDirection(), request.isHaveOrWillGetEv(),
-                request.isHomeOccupancyDuringWorkHours(), request.isNeedFinance());
+        logger.info(request.toString());
+
+        boolean isBatterySelected = (request.getBatterySize() > 0) ? true : false;
+        boolean isHomeOccupancyDuringWorkHours = request.isHomeOccupancyDuringWorkHours();
 
         // Get initial total cost of the system
-        double initialCost = (request.getBatterySize() * BATTERY_COST_PER_KWH)
-                + (request.getSolarSize() * SOLAR_COST_PER_KW);
-                
+        double initialCost = calculateInitialCost(request);
         TotalCost totalCost = new TotalCost(initialCost);
         logger.info("Initial system cost: £{}", String.format("%.2f", initialCost));
 
         double originalBatterySize = request.getBatterySize();
         double usableBatteryMaxCapacity = originalBatterySize * BATTERY_USABLE_PERCENTAGE;
+
+
 
         // Solar generation and usage components (constant over years)
         // NOTE: Solar direction and other request parameters are not yet used in this simplified calculation
@@ -109,11 +131,12 @@ public class RoiService {
 
         double solarUsed;
         double solarExport;
-
+      
+     
         logger.info("HomeOccupancyDuringWorkHours: {}",
-                String.format("%B", request.isHomeOccupancyDuringWorkHours()));
+                String.format("%B", isHomeOccupancyDuringWorkHours));
 
-        if (request.isHomeOccupancyDuringWorkHours() == true) {
+        if (isHomeOccupancyDuringWorkHours == true) {
             solarUsed = solarGen * AT_HOME_SOLAR_SELF_USE_PERCENTAGE;
             solarExport = solarGen * AT_HOME_SOLAR_EXPORT_PERCENTAGE;
         } else {
@@ -126,50 +149,26 @@ public class RoiService {
                 String.format("%.2f", solarUsed),
                 String.format("%.2f", solarExport));
 
-        // Get tariffs and choose the first one for calculation
-        List<Tariff> tariffs = tariffService.getAvailableTariffs();
-        if (tariffs == null || tariffs.isEmpty()) {
-            logger.error("No tariffs available for calculation.");
-            // Consider throwing an exception or returning a default/error response
-            // For now, returning null, but this should be handled more gracefully
-            return null; // Or throw new IllegalStateException("No tariffs configured");
-        }
-
-        // Select tariff based on EV status
-        final boolean needsEvTariff = request.isHaveOrWillGetEv();
-        Tariff selectedTariff = tariffs.stream()
-                .filter(tariff -> tariff.isEvRequired() == needsEvTariff)
-                .findFirst()
-                .orElseThrow(() -> {
-                    String message = String.format("No suitable tariff found for EV status: %s", needsEvTariff);
-                    logger.error(message);
-                    return new IllegalStateException(message);
-                });
-
-        logger.info("Using tariff for calculation: {} (EV Tariff: {})", selectedTariff.getName(), selectedTariff.isEvRequired());
-
+       Tariff selectedTariff = getTariff(request.isHaveOrWillGetEv());
+  
         // --- Year-by-Year Calculation for the selected tariff ---
         List<Double> yearlySavingsList = new ArrayList<>();
         List<RoiChartDataPoint> chartDataPoints = new ArrayList<>();
-        double cumulativeSavings = -initialCost; // Start with negative initial cost
+        double     cumulativeSavings = -initialCost; // Start with negative initial cost
         Integer paybackYearNum = null; // Use Integer to allow null
 
         logger.info("===== YEAR-BY-YEAR CALCULATION for Tariff: {} =====", selectedTariff.getName());
 
-        for (int year = 1; year <= MAX_BATTERY_YEARS; year++) {
-            double degradationFactor = calculateBatteryDegradation(year);
-            double effectiveBatteryCapacity = usableBatteryMaxCapacity * degradationFactor;
+        for (int year = 1; year <= NUMBER_OF_YEARS_TO_TRACK; year++) {
 
-            // Shiftable energy is limited by daily battery capacity over a year or total usage
-            double shiftable = Math.min(effectiveBatteryCapacity * 365, request.getUsage());
-
-            // Battery savings (arbitrage)
-            double batterySavings = shiftable * (selectedTariff.getPeakRate() - selectedTariff.getOffpeakRate()) * BATTERY_EFFICIENCY;
-
-            // Solar savings (self-use and export)
+            double batterySavings = 0;
+            
+            if (isBatterySelected) {
+                batterySavings = calculateBatterySavings(year, usableBatteryMaxCapacity, request, selectedTariff);
+            }
+            
             double solarSavings = (solarUsed * selectedTariff.getPeakRate()) + (solarExport * selectedTariff.getExportRate());
 
-            // Total savings for this year
             double yearTotalSavings = batterySavings + solarSavings;
             yearlySavingsList.add(yearTotalSavings);
 
@@ -188,8 +187,8 @@ public class RoiService {
             if (year == 1 || year % 5 == 0 || year == MAX_BATTERY_YEARS) {
                 logger.info("Year {}: Annual savings £{}, Cumulative £{}",
                         year,
-                        String.format("%.2f", yearTotalSavings),
-                        String.format("%.2f", cumulativeSavings));
+                    String.format("%.2f", yearTotalSavings),
+                    String.format("%.2f", cumulativeSavings));
             }
         }
 
@@ -234,6 +233,16 @@ public class RoiService {
         );
     }
 
+    private double calculateInitialCost(RoiRequest request) {
+        boolean isBatterySelected = (request.getBatterySize() > 0);
+        if (isBatterySelected) {
+            return (request.getBatterySize() * BATTERY_COST_PER_KWH)
+                + (request.getSolarSize() * SOLAR_COST_PER_KW);
+        } else {
+            return (request.getSolarSize() * SOLAR_COST_PER_KW);
+        }
+    }
+
     /**
      * Returns the typical output multiplier for a given solar panel direction.
      * Multiplier is relative to south-facing (1.0 = 100% of optimal output).
@@ -259,5 +268,28 @@ public class RoiService {
             default ->
                 1.0;
         };
+    }
+
+    private Tariff getTariff (Boolean  needsEvTariff) {
+
+
+        List<Tariff> tariffs = tariffService.getAvailableTariffs();
+        if (tariffs == null || tariffs.isEmpty()) { 
+            logger.error("No tariffs available for calculation.");
+            throw new IllegalStateException("No tariffs available for calculation.");
+        }
+
+        Tariff selectedTariff = tariffs.stream()
+                .filter(tariff -> tariff.isEvRequired() == needsEvTariff)
+                .findFirst()
+                .orElseThrow(() -> {
+                    String message = String.format("No suitable tariff found for EV status: %s", needsEvTariff);
+                    logger.error(message);
+                    return new IllegalStateException(message);
+                });
+
+        logger.info("Using tariff for calculation: {} (Tariff: {})", selectedTariff.getName(), selectedTariff.isEvRequired());
+
+        return selectedTariff;  
     }
 }

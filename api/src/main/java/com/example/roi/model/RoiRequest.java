@@ -93,4 +93,19 @@ public class RoiRequest {
     public void setSolarSize(double solarSize) {
         this.solarSize = solarSize;
     }
+
+    @Override
+    public String toString() {
+        return "RoiRequest{" +
+                "solarPanelDirection=" + getSolarPanelDirection() +
+                ", haveOrWillGetEv=" + isHaveOrWillGetEv() +
+                ", homeOccupancyDuringWorkHours=" + isHomeOccupancyDuringWorkHours() +
+                ", needFinance=" + isNeedFinance() +
+                ", solarSize=" + getSolarSize() +
+                ", batterySize=" + getBatterySize() +
+                ", usage=" + getUsage();
+
+
+    }
+
 }

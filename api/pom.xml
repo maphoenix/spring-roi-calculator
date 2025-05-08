@@ -70,7 +70,6 @@
             <version>2.1.0</version>
         </dependency>
 
-<<<<<<< HEAD
 <!-- Jsoup for HTML parsing -->
 <dependency>
     <groupId>org.jsoup</groupId>
@@ -85,9 +84,6 @@
 </dependency>
 
         <!-- Validation -->
-=======
-        <!-- Spring Boot Test Starter -->
->>>>>>> e738f90b1c59ca6ad2f35099c402b495e41db8e6
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
