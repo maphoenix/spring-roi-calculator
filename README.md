@@ -169,9 +169,14 @@ curl "http://localhost:8080/api/roi/timeseries?batterySize=20&solarSize=6&usage=
 curl -X POST http://localhost:8080/api/roi/calculate \
   -H "Content-Type: application/json" \
   -d '{
-    "batterySize": 15.0,
-    "usage": 4500,
-    "solarSize": 5.0
+    "solarPanelDirection": "south",
+    "haveOrWillGetEv": true,
+    "homeOccupancyDuringWorkHours": false,
+    "needFinance": false,
+    "batterySize": 17.5,
+    "usage": 4000,
+    "solarSize": 4.0,
+    "includePdfBreakdown": true
   }'
 ```
 
