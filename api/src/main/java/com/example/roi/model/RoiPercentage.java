@@ -5,6 +5,8 @@ public class RoiPercentage {
     private double percentage;
     private int periodYears;
 
+    public RoiPercentage() {}
+
     public RoiPercentage(double percentage, int periodYears) {
         this.percentage = percentage;
         this.periodYears = periodYears;

@@ -6,6 +6,8 @@ public class RoiChartDataPoint {
     private double cumulativeSavings;
     private String currency = "GBP";
 
+    public RoiChartDataPoint() {}
+
     public RoiChartDataPoint(int year, double cumulativeSavings) {
         this.year = year;
         this.cumulativeSavings = cumulativeSavings;

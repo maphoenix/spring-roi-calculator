@@ -5,6 +5,8 @@ public class MonthlySavings {
     private double amount;
     private String currency = "GBP";
 
+    public MonthlySavings() {}
+
     public MonthlySavings(double amount) {
         this.amount = amount;
     }

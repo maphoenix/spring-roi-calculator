@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.roi.model.PdfReportLinkResponse;
 import com.example.roi.model.RoiCalculationResponse;
-import com.example.roi.model.RoiCalculationResponseWithPdfFlat;
 import com.example.roi.model.RoiRequest;
 import com.example.roi.service.RoiPdfReportService;
 import com.example.roi.service.RoiService;
@@ -40,20 +40,16 @@ public class RoiApiController {
     private RoiPdfReportService roiPdfReportService;
 
     /**
-     * Calculate ROI with aggregated metrics for visualization and PDF report
+     * Calculate ROI with aggregated metrics for visualization
      *
      * @param request Contains battery size, usage, solar size, and other user inputs
-     * @return RoiCalculationResponseWithPdfFlat object with various ROI metrics and pdfUrl
+     * @return RoiCalculationResponseWithPdfFlat object with various ROI metrics and pdfUrl (always null)
      */
+ /*
     @PostMapping("/calculate")
-    public ResponseEntity<RoiCalculationResponseWithPdfFlat> calculateRoi(@RequestBody RoiRequest request) throws IOException, DocumentException {
+    public ResponseEntity<RoiCalculationResponseWithPdfFlat> calculateRoi(@RequestBody RoiRequest request) {
         RoiCalculationResponse response = roiService.calculate(request);
-        String pdfUrl = null;
-        if (request.isIncludePdfBreakdown()) {
-            String reportId = UUID.randomUUID().toString();
-            roiPdfReportService.generateRoiReportToFile(response, reportId);
-            pdfUrl = "/api/roi/reports/roi-report-" + reportId + ".pdf";
-        }
+        String pdfUrl = null; // Always null, never generate PDF here
         RoiCalculationResponseWithPdfFlat flat = new RoiCalculationResponseWithPdfFlat(
             response.getTotalCost(),
             response.getYearlySavings(),
@@ -65,6 +61,28 @@ public class RoiApiController {
             pdfUrl
         );
         return ResponseEntity.ok(flat);
+    }
+*/
+    @PostMapping("/calculate")
+    public ResponseEntity<RoiCalculationResponse> calculateRoi(@RequestBody RoiRequest request) {
+        RoiCalculationResponse response = roiService.calculate(request);
+    
+        return ResponseEntity.ok(response);
+    }
+
+
+    /**
+     * Generate a PDF report from a previously calculated ROI response
+     *
+     * @param response The ROI calculation response to report on
+     * @return PdfReportLinkResponse containing the URL to the generated PDF
+     */
+    @PostMapping("/report")
+    public ResponseEntity<PdfReportLinkResponse> generateReport(@RequestBody RoiCalculationResponse response) throws IOException, DocumentException {
+        String reportId = UUID.randomUUID().toString();
+        roiPdfReportService.generateRoiReportToFile(response, reportId);
+        String pdfUrl = "/api/roi/reports/roi-report-" + reportId + ".pdf";
+        return ResponseEntity.ok(new PdfReportLinkResponse(pdfUrl));
     }
 
     /**

@@ -8,13 +8,16 @@ import java.util.List;
 // based on the client-side TypeScript types.
 public class RoiCalculationResponse {
 
-    private final TotalCost totalCost; // Added missing field and made final
-    private final YearlySavings yearlySavings; // Made final
-    private final MonthlySavings monthlySavings; // Made final
-    private final PaybackPeriod paybackPeriod; // Made final
-    private final RoiChartData roiChartData; // Made final
-    private final RoiPercentage roiPercentage; // Made final
-    private final List<RoiYearlyBreakdown> yearlyBreakdown;
+    private TotalCost totalCost;
+    private YearlySavings yearlySavings;
+    private MonthlySavings monthlySavings;
+    private PaybackPeriod paybackPeriod;
+    private RoiChartData roiChartData;
+    private RoiPercentage roiPercentage;
+    private List<RoiYearlyBreakdown> yearlyBreakdown;
+
+    // No-args constructor for Jackson
+    public RoiCalculationResponse() {}
 
     // Constructor
     public RoiCalculationResponse(TotalCost totalCost, YearlySavings yearlySavings, MonthlySavings monthlySavings,

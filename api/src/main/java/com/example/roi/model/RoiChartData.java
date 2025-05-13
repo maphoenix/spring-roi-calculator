@@ -5,11 +5,13 @@ import java.util.List;
 public class RoiChartData {
 
     private List<RoiChartDataPoint> dataPoints;
-    private Integer breakEvenYear; // Use Integer to allow null
+    private Integer paybackYearNum;
 
-    public RoiChartData(List<RoiChartDataPoint> dataPoints, Integer breakEvenYear) {
+    public RoiChartData() {}
+
+    public RoiChartData(List<RoiChartDataPoint> dataPoints, Integer paybackYearNum) {
         this.dataPoints = dataPoints;
-        this.breakEvenYear = breakEvenYear;
+        this.paybackYearNum = paybackYearNum;
     }
 
     // Getters
@@ -17,7 +19,7 @@ public class RoiChartData {
         return dataPoints;
     }
 
-    public Integer getBreakEvenYear() {
-        return breakEvenYear;
+    public Integer getPaybackYearNum() {
+        return paybackYearNum;
     }
 }

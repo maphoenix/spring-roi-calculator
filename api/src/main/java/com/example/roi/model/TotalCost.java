@@ -5,6 +5,8 @@ public class TotalCost {
     private double amount;
     private String currency = "GBP"; // Defaulting to GBP
 
+    public TotalCost() {}
+
     public TotalCost(double amount) {
         this.amount = amount;
     }

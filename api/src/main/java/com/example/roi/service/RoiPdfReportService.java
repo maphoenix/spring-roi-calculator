@@ -3,6 +3,7 @@ package com.example.roi.service;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -80,7 +81,12 @@ public class RoiPdfReportService {
     }
 
     public String generateRoiReportToFile(RoiCalculationResponse response, String reportId) throws IOException, DocumentException {
-        String filePath = "/tmp/roi-report-" + reportId + ".pdf";
+        String dirPath = "./pdf";
+        File dir = new File(dirPath);
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        String filePath = dirPath + "/roi-report-" + reportId + ".pdf";
         try (FileOutputStream fos = new FileOutputStream(filePath)) {
             byte[] pdfBytes = generateRoiReport(response);
             fos.write(pdfBytes);

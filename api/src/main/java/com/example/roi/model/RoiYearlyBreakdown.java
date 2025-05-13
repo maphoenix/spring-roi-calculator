@@ -13,6 +13,8 @@ public class RoiYearlyBreakdown {
     private double yearlyTotalSavings;
     private double cumulativeSavings;
 
+    public RoiYearlyBreakdown() {}
+
     public RoiYearlyBreakdown(int year, double usableBatteryMaxCapacity, double degradationFactor, double shiftable,
                               double batterySavings, double solarUsed, double solarExport, double solarSavingsSelfUse,
                               double solarSavingsExport, double yearlyTotalSavings, double cumulativeSavings) {
