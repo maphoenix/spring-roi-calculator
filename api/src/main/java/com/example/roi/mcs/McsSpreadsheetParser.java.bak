@@ -99,7 +99,7 @@ public class McsSpreadsheetParser {
 
     public static void main(String[] args) throws Exception {
         String excel = "src/main/resources/mcs/MGD003-LookupTables-FINAL (3).xlsx";
-        String jsonOut = "src/main/resources/mcs/mcs_self_consumption.json";
+        String jsonOut = "mcs_self_consumption.json";
         
         System.out.println("Opening Excel file: " + excel);
         Workbook wb = new XSSFWorkbook(new FileInputStream(excel));
