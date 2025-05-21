@@ -1,14 +1,72 @@
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+package com.example.roi.mcs;
 
 import java.io.File;
 import java.util.Iterator;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+/**
+ * McsLookup provides functionality to find self-consumption fractions from MCS lookup tables.
+ * It supports both exact matches and finding the closest matching data point based on multiple criteria.
+ * 
+ * The class handles JSON data structured with:
+ * - Occupancy types (e.g., "home_all_day")
+ * - Consumption ranges (e.g., "1,500 kWh to 1,999 kWh")
+ * - PV generation bands (e.g., "300-599" kWh)
+ * - Battery sizes and their corresponding self-consumption fractions
+ *
+ * The matching algorithm prioritizes criteria in the following order:
+ * 1. Occupancy type (40% weight)
+ * 2. Annual consumption (30% weight)
+ * 3. PV generation (20% weight)
+ * 4. Battery size (10% weight)
+ *
+ * Input Validation Rules:
+ * - Occupancy type: Must be non-null and non-empty
+ * - Annual consumption: Must be between 0 and 20,000 kWh
+ * - PV generation: Must be between 0 and 10,000 kWh
+ * - Battery size: Must be between 0 and 50 kWh
+ *
+ * Exception Handling:
+ * - {@link InvalidParameterException}: Thrown when input parameters are outside their allowed ranges
+ * - {@link IllegalArgumentException}: Thrown when no valid matches can be found in the data
+ *
+ * Example Usage:
+ * <pre>
+ * McsLookup lookup = new McsLookup("path/to/mcs_data.json");
+ * 
+ * // Find exact match
+ * double fraction = lookup.lookup(
+ *     "Home all day",    // occupancy type
+ *     1750,             // annual consumption (kWh)
+ *     400,              // PV generation (kWh)
+ *     2.1               // battery size (kWh)
+ * );
+ * 
+ * // Find closest match with similarity score
+ * MatchResult result = lookup.findClosestMatch(
+ *     "Home all day",    // occupancy type
+ *     1750,             // annual consumption (kWh)
+ *     400,              // PV generation (kWh)
+ *     2.1               // battery size (kWh)
+ * );
+ * System.out.println("Matched fraction: " + result.fraction);
+ * System.out.println("Similarity score: " + result.similarity);
+ * </pre>
+ *
+ * @see InvalidParameterException
+ */
 public class McsLookup {
+    
+    /**
+     * Represents a single entry in the lookup table with its range parameters and fraction value.
+     */
     public static class Entry {
         public final double minPv, maxPv;
         public final double batterySize;
         public final double fraction;
+        
         public Entry(double minPv, double maxPv, double batterySize, double fraction) {
             this.minPv = minPv;
             this.maxPv = maxPv;
@@ -17,11 +75,292 @@ public class McsLookup {
         }
     }
 
-    private final JsonNode root;
+    /**
+     * Contains the results of a closest match search, including all matched parameters
+     * and a similarity score indicating the quality of the match.
+     */
+    public static class MatchResult {
+        /** The matched occupancy type (e.g., "Home all day") */
+        public final String matchedOccupancy;
+        /** The matched consumption range (e.g., "Annual consumption: 1,500 kWh to 1,999 kWh") */
+        public final String matchedConsumption;
+        /** The matched PV generation range (e.g., "300-599") */
+        public final String matchedPvRange;
+        /** The matched battery size in kWh */
+        public final double matchedBatterySize;
+        /** The self-consumption fraction for this combination */
+        public final double fraction;
+        /** Similarity score (0-1) indicating how close the match is to the requested values */
+        public final double similarity;
 
+        public MatchResult(String matchedOccupancy, String matchedConsumption, 
+                         String matchedPvRange, double matchedBatterySize, 
+                         double fraction, double similarity) {
+            this.matchedOccupancy = matchedOccupancy;
+            this.matchedConsumption = matchedConsumption;
+            this.matchedPvRange = matchedPvRange;
+            this.matchedBatterySize = matchedBatterySize;
+            this.fraction = fraction;
+            this.similarity = similarity;
+        }
+    }
+
+    /** The root node of the JSON data structure */
+    private final JsonNode root;
+    
+    /** Minimum allowed values for parameters */
+    private static final double MIN_CONSUMPTION = 0.0;
+    private static final double MIN_PV_GENERATION = 0.0;
+    private static final double MIN_BATTERY_SIZE = 0.0;
+    
+    /** Maximum allowed values for parameters (can be adjusted based on requirements) */
+    private static final double MAX_CONSUMPTION = 20000.0;  // 20,000 kWh
+    private static final double MAX_PV_GENERATION = 10000.0; // 10,000 kWh
+    private static final double MAX_BATTERY_SIZE = 50.0;    // 50 kWh
+
+    /**
+     * Creates a new McsLookup instance by loading data from a JSON file.
+     *
+     * @param jsonPath Path to the JSON file containing the lookup table data
+     * @throws Exception if the file cannot be read or parsed
+     */
     public McsLookup(String jsonPath) throws Exception {
         ObjectMapper M = new ObjectMapper();
         root = M.readTree(new File(jsonPath));
+    }
+
+    /**
+     * Normalizes an occupancy key to match the format used in the JSON data.
+     * Converts "Occupancy: Home all day" to "home_all_day" format.
+     *
+     * @param occupancyKey The occupancy key to normalize
+     * @return The normalized occupancy key
+     */
+    private String normalizeOccupancyKey(String occupancyKey) {
+        if (occupancyKey.startsWith("Occupancy: ")) {
+            occupancyKey = occupancyKey.substring("Occupancy: ".length());
+        }
+        return occupancyKey.toLowerCase().replace(" ", "_");
+    }
+
+    /**
+     * Calculates string similarity using Levenshtein distance.
+     * Returns a normalized similarity score between 0 (completely different) and 1 (identical).
+     *
+     * @param s1 First string to compare
+     * @param s2 Second string to compare
+     * @return Similarity score between 0 and 1
+     */
+    private double calculateStringSimilarity(String s1, String s2) {
+        s1 = s1.toLowerCase();
+        s2 = s2.toLowerCase();
+        int maxLength = Math.max(s1.length(), s2.length());
+        if (maxLength == 0) return 1.0;
+        return 1.0 - ((double) levenshteinDistance(s1, s2) / maxLength);
+    }
+
+    /**
+     * Calculates the Levenshtein distance between two strings.
+     * This is the minimum number of single-character edits required to change one string into the other.
+     */
+    private int levenshteinDistance(String s1, String s2) {
+        int[][] dp = new int[s1.length() + 1][s2.length() + 1];
+        
+        for (int i = 0; i <= s1.length(); i++) {
+            for (int j = 0; j <= s2.length(); j++) {
+                if (i == 0) {
+                    dp[i][j] = j;
+                } else if (j == 0) {
+                    dp[i][j] = i;
+                } else {
+                    dp[i][j] = Math.min(
+                        Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1),
+                        dp[i - 1][j - 1] + (s1.charAt(i - 1) == s2.charAt(j - 1) ? 0 : 1)
+                    );
+                }
+            }
+        }
+        return dp[s1.length()][s2.length()];
+    }
+
+    /**
+     * Parses a consumption range string into min and max values.
+     * Example: "Annual consumption: 1,500 kWh to 1,999 kWh" -> [1500.0, 1999.0]
+     */
+    private double[] parseConsumptionRange(String consumption) {
+        String[] parts = consumption.substring("Annual consumption: ".length())
+                                  .replace(" kWh", "")
+                                  .replace(",", "")
+                                  .split(" to ");
+        return new double[] { Double.parseDouble(parts[0]), Double.parseDouble(parts[1]) };
+    }
+
+    /**
+     * Calculates the similarity between a PV generation value and a range.
+     * Returns 1.0 for exact matches (within range) and decreases based on distance to range boundaries.
+     *
+     * @param pvGenKwh The PV generation value to check
+     * @param pvMin The minimum value of the range
+     * @param pvMax The maximum value of the range
+     * @return Similarity score between 0 and 1
+     */
+    private double calculatePvSimilarity(double pvGenKwh, double pvMin, double pvMax) {
+        // If the value is within the range, it's a perfect match
+        if (pvGenKwh >= pvMin && pvGenKwh <= pvMax) {
+            return 1.0;
+        }
+        
+        // Calculate distance to range boundaries
+        double distanceToMin = Math.abs(pvGenKwh - pvMin);
+        double distanceToMax = Math.abs(pvGenKwh - pvMax);
+        double closestDistance = Math.min(distanceToMin, distanceToMax);
+        
+        // Calculate range size for normalization
+        double rangeSize = pvMax - pvMin;
+        
+        // Normalize the distance to get similarity (1 - normalized distance)
+        return Math.max(0, 1.0 - (closestDistance / rangeSize));
+    }
+
+    /**
+     * Validates input parameters against allowed ranges.
+     * 
+     * @throws InvalidParameterException if any parameter is outside its allowed range
+     */
+    private void validateInputParameters(String occupancyType, 
+                                       double annualConsumption,
+                                       double pvGenKwh,
+                                       double batteryKwh) {
+        if (occupancyType == null || occupancyType.trim().isEmpty()) {
+            throw new InvalidParameterException("Occupancy type cannot be null or empty");
+        }
+
+        if (annualConsumption < MIN_CONSUMPTION || annualConsumption > MAX_CONSUMPTION) {
+            throw new InvalidParameterException(
+                String.format("Annual consumption must be between %.1f and %.1f kWh, got: %.1f",
+                    MIN_CONSUMPTION, MAX_CONSUMPTION, annualConsumption)
+            );
+        }
+
+        if (pvGenKwh < MIN_PV_GENERATION || pvGenKwh > MAX_PV_GENERATION) {
+            throw new InvalidParameterException(
+                String.format("PV generation must be between %.1f and %.1f kWh, got: %.1f",
+                    MIN_PV_GENERATION, MAX_PV_GENERATION, pvGenKwh)
+            );
+        }
+
+        if (batteryKwh < MIN_BATTERY_SIZE || batteryKwh > MAX_BATTERY_SIZE) {
+            throw new InvalidParameterException(
+                String.format("Battery size must be between %.1f and %.1f kWh, got: %.1f",
+                    MIN_BATTERY_SIZE, MAX_BATTERY_SIZE, batteryKwh)
+            );
+        }
+    }
+
+    /**
+     * Finds the closest matching data point based on multiple criteria.
+     * The matching algorithm uses weighted similarity scores for each criterion:
+     * - Occupancy type: 40% (using string similarity)
+     * - Annual consumption: 30% (using range proximity)
+     * - PV generation: 20% (using range proximity)
+     * - Battery size: 10% (using value proximity)
+     *
+     * Input parameters are validated against the following rules:
+     * - occupancyType: Must be non-null and non-empty string
+     * - annualConsumption: Must be between 0 and 20,000 kWh
+     * - pvGenKwh: Must be between 0 and 10,000 kWh
+     * - batteryKwh: Must be between 0 and 50 kWh
+     *
+     * The method returns a MatchResult object containing:
+     * - matchedOccupancy: The closest matching occupancy type
+     * - matchedConsumption: The matched consumption range
+     * - matchedPvRange: The matched PV generation range
+     * - matchedBatterySize: The closest matching battery size
+     * - fraction: The self-consumption fraction for this combination
+     * - similarity: A score between 0 and 1 indicating match quality
+     *
+     * @param occupancyType The occupancy type to match (e.g., "Home all day")
+     * @param annualConsumption Annual consumption in kWh (0-20,000)
+     * @param pvGenKwh Annual PV generation in kWh (0-10,000)
+     * @param batteryKwh Battery size in kWh (0-50)
+     * @return MatchResult containing the best matching data point and similarity score
+     * @throws InvalidParameterException if any input parameter is outside its allowed range
+     * @throws IllegalArgumentException if no valid matches can be found in the data
+     */
+    public MatchResult findClosestMatch(String occupancyType, 
+                                      double annualConsumption,
+                                      double pvGenKwh,
+                                      double batteryKwh) {
+        // Validate input parameters
+        validateInputParameters(occupancyType, annualConsumption, pvGenKwh, batteryKwh);
+
+        double bestSimilarity = -1;
+        MatchResult bestMatch = null;
+
+        Iterator<String> occupancyTypes = root.fieldNames();
+        while (occupancyTypes.hasNext()) {
+            String currentOccupancy = occupancyTypes.next();
+            // Calculate string similarity for occupancy type
+            double occupancySimilarity = calculateStringSimilarity(
+                currentOccupancy.replace("_", " "),
+                normalizeOccupancyKey(occupancyType).replace("_", " ")
+            );
+
+            JsonNode ranges = root.path(currentOccupancy).path("consumption_ranges");
+            for (JsonNode range : ranges) {
+                String consumption = range.path("consumption").asText();
+                double[] consumptionBounds = parseConsumptionRange(consumption);
+                
+                // Calculate consumption similarity based on distance to range boundaries
+                double consumptionSimilarity = 1.0 - Math.min(
+                    Math.abs(annualConsumption - consumptionBounds[0]),
+                    Math.abs(annualConsumption - consumptionBounds[1])
+                ) / Math.max(consumptionBounds[1], annualConsumption);
+
+                JsonNode bands = range.path("bands");
+                for (JsonNode band : bands) {
+                    double pvMin = band.path("pv_min").asDouble();
+                    double pvMax = band.path("pv_max").asDouble();
+                    
+                    // Calculate PV generation similarity
+                    double pvSimilarity = calculatePvSimilarity(pvGenKwh, pvMin, pvMax);
+
+                    JsonNode batteries = band.path("batteries");
+                    for (JsonNode battery : batteries) {
+                        double batterySize = Double.parseDouble(battery.path("size").asText());
+                        
+                        // Calculate battery size similarity
+                        double batterySimilarity = 1.0 - Math.abs(batteryKwh - batterySize) / 
+                                                 Math.max(batteryKwh, batterySize);
+
+                        // Calculate weighted total similarity
+                        double totalSimilarity = occupancySimilarity * 0.4 +  // Occupancy type: highest weight
+                                               consumptionSimilarity * 0.3 +  // Consumption: second priority
+                                               pvSimilarity * 0.2 +           // PV generation: third priority
+                                               batterySimilarity * 0.1;       // Battery size: lowest weight
+
+                        // Update best match if this combination has higher similarity
+                        if (totalSimilarity > bestSimilarity) {
+                            bestSimilarity = totalSimilarity;
+                            bestMatch = new MatchResult(
+                                range.path("occupancy").asText(),
+                                consumption,
+                                band.path("pv_generation_range").asText(),
+                                batterySize,
+                                battery.path("pv_generated_percentage").asDouble(),
+                                totalSimilarity
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestMatch == null) {
+            throw new IllegalArgumentException("No valid matches found in the data");
+        }
+
+        return bestMatch;
     }
 
     /**
@@ -33,45 +372,75 @@ public class McsLookup {
      * @param occupancyKey       e.g. "Occupancy: Home all day"
      */
     public double lookup(double annualConsumption,
-                         double pvGenKwh,
-                         double batteryKwh,
-                         String occupancyKey) {
+                        double pvGenKwh,
+                        double batteryKwh,
+                        String occupancyKey) {
 
-        Iterator<String> bands = root.fieldNames();
-        String matchBand = null;
-        while (bands.hasNext()) {
-            String band = bands.next();
-            String[] parts = band.split("-");
+        String normalizedOccupancy = normalizeOccupancyKey(occupancyKey);
+        JsonNode occupancyNode = root.path(normalizedOccupancy);
+        
+        if (occupancyNode.isMissingNode()) {
+            throw new IllegalArgumentException("Occupancy not found: " + occupancyKey);
+        }
+
+        JsonNode ranges = occupancyNode.path("consumption_ranges");
+        if (!ranges.isArray()) {
+            throw new IllegalArgumentException("Invalid format: consumption_ranges not found for " + occupancyKey);
+        }
+
+        // Find matching consumption range
+        String matchingConsumption = null;
+        JsonNode matchingRange = null;
+        for (JsonNode range : ranges) {
+            String consumption = range.path("consumption").asText();
+            // Parse "Annual consumption: 1,500 kWh to 1,999 kWh"
+            String[] parts = consumption.substring("Annual consumption: ".length())
+                                     .replace(" kWh", "")
+                                     .replace(",", "")
+                                     .split(" to ");
             double lo = Double.parseDouble(parts[0]);
             double hi = Double.parseDouble(parts[1]);
             if (annualConsumption >= lo && annualConsumption <= hi) {
-                matchBand = band;
+                matchingConsumption = consumption;
+                matchingRange = range;
                 break;
             }
         }
-        if (matchBand == null) throw new IllegalArgumentException("No consumption band for " + annualConsumption);
 
-        JsonNode occNode = root.path(matchBand).path(occupancyKey).path("bands");
-        if (!occNode.isArray()) throw new IllegalArgumentException("Occupancy not found: " + occupancyKey);
+        if (matchingRange == null) {
+            throw new IllegalArgumentException("No consumption band for " + annualConsumption);
+        }
 
-        for (JsonNode band : occNode) {
-            double lo = band.path("generation_band_kwh").path("min").asDouble();
-            double hi = band.path("generation_band_kwh").path("max").asDouble();
-            if (pvGenKwh >= lo && pvGenKwh <= hi) {
-                JsonNode fracs = band.path("fractions_by_battery_kwh");
+        // Find matching PV generation band
+        JsonNode bands = matchingRange.path("bands");
+        if (!bands.isArray()) {
+            throw new IllegalArgumentException("Invalid format: bands not found");
+        }
+
+        for (JsonNode band : bands) {
+            double pvMin = band.path("pv_min").asDouble();
+            double pvMax = band.path("pv_max").asDouble();
+            
+            if (pvGenKwh >= pvMin && pvGenKwh <= pvMax) {
+                // Find closest battery size
+                JsonNode batteries = band.path("batteries");
+                if (!batteries.isArray()) {
+                    throw new IllegalArgumentException("Invalid format: batteries not found");
+                }
+
                 double bestDelta = Double.MAX_VALUE;
-                double chosenFrac = 0;
-                Iterator<String> keys = fracs.fieldNames();
-                while (keys.hasNext()) {
-                    String k = keys.next();
-                    double bs = Double.parseDouble(k);
-                    double delta = Math.abs(bs - batteryKwh);
+                double chosenFraction = 0;
+
+                for (JsonNode battery : batteries) {
+                    double size = Double.parseDouble(battery.path("size").asText());
+                    double delta = Math.abs(size - batteryKwh);
                     if (delta < bestDelta) {
                         bestDelta = delta;
-                        chosenFrac = fracs.path(k).asDouble();
+                        chosenFraction = battery.path("pv_generated_percentage").asDouble();
                     }
                 }
-                return chosenFrac;
+
+                return chosenFraction;
             }
         }
 
