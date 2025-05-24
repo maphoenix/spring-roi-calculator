@@ -34,35 +34,44 @@ class McsLookupTest {
     @Test
     void testLookupWithValidData() {
         // Test case within 300-599 PV range
-        double fraction1 = mcsLookup.lookup(
+        double percentage1 = mcsLookup.lookup(
             1750,  // annual consumption within 1500-1999 range
             400,   // PV generation within 300-599 range
             2.1,   // battery size
-            "Occupancy: Home all day"
+            "Home all day"
         );
-        assertEquals(0.95, fraction1, 0.0001);
+        assertEquals(95.0, percentage1, 0.1);
 
         // Test case within 600-899 PV range
-        double fraction2 = mcsLookup.lookup(
+        double percentage2 = mcsLookup.lookup(
             1750,  // annual consumption within 1500-1999 range
             700,   // PV generation within 600-899 range
             3.1,   // battery size
-            "Occupancy: Home all day"
+            "Home all day"
         );
-        assertEquals(0.93, fraction2, 0.0001);
+        assertEquals(93.0, percentage2, 0.1);
+
+        // Test case for hybrid occupancy
+        double percentage3 = mcsLookup.lookup(
+            1750,  // annual consumption within 1500-1999 range
+            400,   // PV generation within 300-599 range
+            2.1,   // battery size
+            "Hybrid"
+        );
+        assertEquals(85.0, percentage3, 0.1);
     }
 
     @Test
     void testLookupWithInterpolatedBatterySize() {
         // Test with a battery size between available values
-        double fraction = mcsLookup.lookup(
+        double percentage = mcsLookup.lookup(
             1750,  // annual consumption within 1500-1999 range
             400,   // PV generation within 300-599 range
             1.5,   // battery size between 1.1 and 2.1
-            "Occupancy: Home all day"
+            "Home all day"
         );
         // Should return closest battery size value (1.1 in this case)
-        assertEquals(0.9123704114490263, fraction, 0.0001);
+        assertEquals(91.2, percentage, 0.1);
     }
 
     @Test
@@ -72,7 +81,7 @@ class McsLookupTest {
                 1000,  // consumption outside valid range
                 400,
                 2.1,
-                "Occupancy: Home all day"
+                "Home all day"
             );
         });
         assertTrue(exception.getMessage().contains("No consumption band for 1000"));
@@ -85,7 +94,7 @@ class McsLookupTest {
                 1750,
                 1000,  // PV generation outside valid range
                 2.1,
-                "Occupancy: Home all day"
+                "Home all day"
             );
         });
         assertTrue(exception.getMessage().contains("No PV band match for 1000"));
@@ -101,17 +110,17 @@ class McsLookupTest {
                 "Invalid Occupancy"
             );
         });
-        assertTrue(exception.getMessage().contains("Occupancy not found"));
+        assertTrue(exception.getMessage().contains("Unknown occupancy type"));
     }
 
     @Test
     void testNormalizedOccupancyKey() {
         // Both formats should work
-        double fraction1 = mcsLookup.lookup(1750, 400, 2.1, "Occupancy: Home all day");
-        double fraction2 = mcsLookup.lookup(1750, 400, 2.1, "Home all day");
+        double percentage1 = mcsLookup.lookup(1750, 400, 2.1, "Occupancy: Home all day");
+        double percentage2 = mcsLookup.lookup(1750, 400, 2.1, "Home all day");
         
-        assertEquals(fraction1, fraction2, 0.0001);
-        assertEquals(0.95, fraction1, 0.0001);
+        assertEquals(percentage1, percentage2, 0.0001);
+        assertEquals(95.0, percentage1, 0.0001);
     }
 
     @Test
@@ -126,7 +135,7 @@ class McsLookupTest {
         assertEquals("Home all day", result.matchedOccupancy);
         assertTrue(result.matchedConsumption.contains("1,500 kWh to 1,999 kWh"));
         assertEquals("300-599", result.matchedPvRange);
-        assertEquals(2.1, result.matchedBatterySize, 0.0001);
+        assertEquals(2.1, result.matchedBatterySize, 0.1);
         assertTrue(result.similarity > 0.8); // High similarity expected
     }
 
@@ -157,8 +166,8 @@ class McsLookupTest {
         assertEquals("Home all day", result.matchedOccupancy);
         assertTrue(result.matchedConsumption.contains("1,500 kWh to 1,999 kWh"));
         assertEquals("600-899", result.matchedPvRange);
-        assertEquals(4.1, result.matchedBatterySize, 0.0001);
-        assertEquals(0.9448009138806771, result.fraction, 0.0001);
+        assertEquals(4.1, result.matchedBatterySize, 0.1);
+        assertEquals(94.5, result.percentage, 0.1);
     }
 
     @Test

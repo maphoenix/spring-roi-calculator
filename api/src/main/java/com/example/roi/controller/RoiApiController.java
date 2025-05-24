@@ -45,24 +45,7 @@ public class RoiApiController {
      * @param request Contains battery size, usage, solar size, and other user inputs
      * @return RoiCalculationResponseWithPdfFlat object with various ROI metrics and pdfUrl (always null)
      */
- /*
-    @PostMapping("/calculate")
-    public ResponseEntity<RoiCalculationResponseWithPdfFlat> calculateRoi(@RequestBody RoiRequest request) {
-        RoiCalculationResponse response = roiService.calculate(request);
-        String pdfUrl = null; // Always null, never generate PDF here
-        RoiCalculationResponseWithPdfFlat flat = new RoiCalculationResponseWithPdfFlat(
-            response.getTotalCost(),
-            response.getYearlySavings(),
-            response.getMonthlySavings(),
-            response.getPaybackPeriod(),
-            response.getRoiChartData(),
-            response.getRoiPercentage(),
-            response.getYearlyBreakdown(),
-            pdfUrl
-        );
-        return ResponseEntity.ok(flat);
-    }
-*/
+ 
     @PostMapping("/calculate")
     public ResponseEntity<RoiCalculationResponse> calculateRoi(@RequestBody RoiRequest request) {
         RoiCalculationResponse response = roiService.calculate(request);

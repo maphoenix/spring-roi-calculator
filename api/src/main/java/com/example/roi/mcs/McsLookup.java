@@ -1,20 +1,19 @@
 package com.example.roi.mcs;
 
 import java.io.File;
-import java.util.Iterator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * McsLookup provides functionality to find self-consumption fractions from MCS lookup tables.
+ * McsLookup provides functionality to find self-consumption percentages from MCS lookup tables.
  * It supports both exact matches and finding the closest matching data point based on multiple criteria.
  * 
  * The class handles JSON data structured with:
  * - Occupancy types (e.g., "home_all_day")
  * - Consumption ranges (e.g., "1,500 kWh to 1,999 kWh")
  * - PV generation bands (e.g., "300-599" kWh)
- * - Battery sizes and their corresponding self-consumption fractions
+ * - Battery sizes and their corresponding self-consumption percentages
  *
  * The matching algorithm prioritizes criteria in the following order:
  * 1. Occupancy type (40% weight)
@@ -37,7 +36,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * McsLookup lookup = new McsLookup("path/to/mcs_data.json");
  * 
  * // Find exact match
- * double fraction = lookup.lookup(
+ * double percentage = lookup.lookup(
  *     "Home all day",    // occupancy type
  *     1750,             // annual consumption (kWh)
  *     400,              // PV generation (kWh)
@@ -51,7 +50,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  *     400,              // PV generation (kWh)
  *     2.1               // battery size (kWh)
  * );
- * System.out.println("Matched fraction: " + result.fraction);
+ * System.out.println("Matched percentage: " + result.percentage);
  * System.out.println("Similarity score: " + result.similarity);
  * </pre>
  *
@@ -60,18 +59,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class McsLookup {
     
     /**
-     * Represents a single entry in the lookup table with its range parameters and fraction value.
+     * Represents a single entry in the lookup table with its range parameters and percentage value.
      */
     public static class Entry {
         public final double minPv, maxPv;
         public final double batterySize;
-        public final double fraction;
+        public final double percentage;
         
-        public Entry(double minPv, double maxPv, double batterySize, double fraction) {
+        public Entry(double minPv, double maxPv, double batterySize, double percentage) {
             this.minPv = minPv;
             this.maxPv = maxPv;
             this.batterySize = batterySize;
-            this.fraction = fraction;
+            this.percentage = percentage;
         }
     }
 
@@ -88,19 +87,19 @@ public class McsLookup {
         public final String matchedPvRange;
         /** The matched battery size in kWh */
         public final double matchedBatterySize;
-        /** The self-consumption fraction for this combination */
-        public final double fraction;
+        /** The self-consumption percentage for this combination */
+        public final double percentage;
         /** Similarity score (0-1) indicating how close the match is to the requested values */
         public final double similarity;
 
         public MatchResult(String matchedOccupancy, String matchedConsumption, 
                          String matchedPvRange, double matchedBatterySize, 
-                         double fraction, double similarity) {
+                         double percentage, double similarity) {
             this.matchedOccupancy = matchedOccupancy;
             this.matchedConsumption = matchedConsumption;
             this.matchedPvRange = matchedPvRange;
             this.matchedBatterySize = matchedBatterySize;
-            this.fraction = fraction;
+            this.percentage = percentage;
             this.similarity = similarity;
         }
     }
@@ -141,6 +140,21 @@ public class McsLookup {
             occupancyKey = occupancyKey.substring("Occupancy: ".length());
         }
         return occupancyKey.toLowerCase().replace(" ", "_");
+    }
+
+    private int getOccupancyId(String occupancyType) {
+        switch (normalizeOccupancyKey(occupancyType)) {
+            case "home_all_day":
+                return 1;
+            case "out_during_day":
+                return 2;
+            case "in_half_day":
+                return 3;
+            case "hybrid":
+                return 4;
+            default:
+                throw new IllegalArgumentException("Unknown occupancy type: " + occupancyType);
+        }
     }
 
     /**
@@ -276,7 +290,7 @@ public class McsLookup {
      * - matchedConsumption: The matched consumption range
      * - matchedPvRange: The matched PV generation range
      * - matchedBatterySize: The closest matching battery size
-     * - fraction: The self-consumption fraction for this combination
+     * - percentage: The self-consumption percentage for this combination
      * - similarity: A score between 0 and 1 indicating match quality
      *
      * @param occupancyType The occupancy type to match (e.g., "Home all day")
@@ -297,25 +311,35 @@ public class McsLookup {
         double bestSimilarity = -1;
         MatchResult bestMatch = null;
 
-        Iterator<String> occupancyTypes = root.fieldNames();
-        while (occupancyTypes.hasNext()) {
-            String currentOccupancy = occupancyTypes.next();
-            // Calculate string similarity for occupancy type
-            double occupancySimilarity = calculateStringSimilarity(
-                currentOccupancy.replace("_", " "),
-                normalizeOccupancyKey(occupancyType).replace("_", " ")
-            );
+        // Iterate through all occupancy types (1, 2, 3)
+        for (int id = 1; id <= 3; id++) {
+            JsonNode occupancyNode = root.path(String.valueOf(id));
+            if (occupancyNode.isMissingNode()) continue;
 
-            JsonNode ranges = root.path(currentOccupancy).path("consumption_ranges");
+            JsonNode ranges = occupancyNode.path("consumption_ranges");
+            if (!ranges.isArray()) continue;
+
             for (JsonNode range : ranges) {
-                String consumption = range.path("consumption").asText();
-                double[] consumptionBounds = parseConsumptionRange(consumption);
+                // Get occupancy details
+                JsonNode occ = range.path("occupancy");
+                String currentOccupancy = occ.path("type").asText();
+                
+                // Calculate string similarity for occupancy type
+                double occupancySimilarity = calculateStringSimilarity(
+                    currentOccupancy,
+                    occupancyType
+                );
+
+                // Get consumption range
+                JsonNode consumption = range.path("annual_consumption");
+                double minConsumption = consumption.path("min").asDouble();
+                double maxConsumption = consumption.path("max").asDouble();
                 
                 // Calculate consumption similarity based on distance to range boundaries
                 double consumptionSimilarity = 1.0 - Math.min(
-                    Math.abs(annualConsumption - consumptionBounds[0]),
-                    Math.abs(annualConsumption - consumptionBounds[1])
-                ) / Math.max(consumptionBounds[1], annualConsumption);
+                    Math.abs(annualConsumption - minConsumption),
+                    Math.abs(annualConsumption - maxConsumption)
+                ) / Math.max(maxConsumption, annualConsumption);
 
                 JsonNode bands = range.path("bands");
                 for (JsonNode band : bands) {
@@ -328,26 +352,30 @@ public class McsLookup {
                     JsonNode batteries = band.path("batteries");
                     for (JsonNode battery : batteries) {
                         double batterySize = Double.parseDouble(battery.path("size").asText());
+                        double percentage = battery.path("pv_generated_percentage").asDouble();
                         
-                        // Calculate battery size similarity
-                        double batterySimilarity = 1.0 - Math.abs(batteryKwh - batterySize) / 
-                                                 Math.max(batteryKwh, batterySize);
-
-                        // Calculate weighted total similarity
-                        double totalSimilarity = occupancySimilarity * 0.4 +  // Occupancy type: highest weight
-                                               consumptionSimilarity * 0.3 +  // Consumption: second priority
-                                               pvSimilarity * 0.2 +           // PV generation: third priority
-                                               batterySimilarity * 0.1;       // Battery size: lowest weight
-
-                        // Update best match if this combination has higher similarity
+                        // Calculate similarity for battery size
+                        double batterySimilarity = 1.0 - Math.min(
+                            Math.abs(batteryKwh - batterySize),
+                            Math.abs(batteryKwh - batterySize) / Math.max(batterySize, batteryKwh)
+                        );
+                        
+                        // Calculate overall similarity using weighted components
+                        double totalSimilarity = (
+                            occupancySimilarity * 0.4 +    // 40% weight for occupancy
+                            consumptionSimilarity * 0.3 +  // 30% weight for consumption
+                            pvSimilarity * 0.2 +           // 20% weight for PV generation
+                            batterySimilarity * 0.1        // 10% weight for battery size
+                        );
+                        
                         if (totalSimilarity > bestSimilarity) {
                             bestSimilarity = totalSimilarity;
                             bestMatch = new MatchResult(
-                                range.path("occupancy").asText(),
-                                consumption,
+                                currentOccupancy,
+                                String.format("Annual consumption: %,d kWh to %,d kWh", (int)minConsumption, (int)maxConsumption),
                                 band.path("pv_generation_range").asText(),
                                 batterySize,
-                                battery.path("pv_generated_percentage").asDouble(),
+                                percentage,
                                 totalSimilarity
                             );
                         }
@@ -364,20 +392,21 @@ public class McsLookup {
     }
 
     /**
-     * Lookup self-consumption fraction.
+     * Lookup self-consumption percentage.
      *
      * @param annualConsumption  e.g. 5200
      * @param pvGenKwh           actual annual PV generation (kWh)
      * @param batteryKwh         usable battery size (kWh)
      * @param occupancyKey       e.g. "Occupancy: Home all day"
+     * @return The self-consumption percentage (0-100)
      */
     public double lookup(double annualConsumption,
                         double pvGenKwh,
                         double batteryKwh,
                         String occupancyKey) {
 
-        String normalizedOccupancy = normalizeOccupancyKey(occupancyKey);
-        JsonNode occupancyNode = root.path(normalizedOccupancy);
+        int occupancyId = getOccupancyId(occupancyKey);
+        JsonNode occupancyNode = root.path(String.valueOf(occupancyId));
         
         if (occupancyNode.isMissingNode()) {
             throw new IllegalArgumentException("Occupancy not found: " + occupancyKey);
@@ -389,19 +418,13 @@ public class McsLookup {
         }
 
         // Find matching consumption range
-        String matchingConsumption = null;
         JsonNode matchingRange = null;
         for (JsonNode range : ranges) {
-            String consumption = range.path("consumption").asText();
-            // Parse "Annual consumption: 1,500 kWh to 1,999 kWh"
-            String[] parts = consumption.substring("Annual consumption: ".length())
-                                     .replace(" kWh", "")
-                                     .replace(",", "")
-                                     .split(" to ");
-            double lo = Double.parseDouble(parts[0]);
-            double hi = Double.parseDouble(parts[1]);
-            if (annualConsumption >= lo && annualConsumption <= hi) {
-                matchingConsumption = consumption;
+            JsonNode consumption = range.path("annual_consumption");
+            double min = consumption.path("min").asDouble();
+            double max = consumption.path("max").asDouble();
+            
+            if (annualConsumption >= min && annualConsumption <= max) {
                 matchingRange = range;
                 break;
             }
@@ -429,18 +452,19 @@ public class McsLookup {
                 }
 
                 double bestDelta = Double.MAX_VALUE;
-                double chosenFraction = 0;
+                double chosenPercentage = 0;
 
                 for (JsonNode battery : batteries) {
-                    double size = Double.parseDouble(battery.path("size").asText());
-                    double delta = Math.abs(size - batteryKwh);
+                    double batterySize = Double.parseDouble(battery.path("size").asText());
+                    double delta = Math.abs(batteryKwh - batterySize);
+                    
                     if (delta < bestDelta) {
                         bestDelta = delta;
-                        chosenFraction = battery.path("pv_generated_percentage").asDouble();
+                        chosenPercentage = battery.path("pv_generated_percentage").asDouble();
                     }
                 }
 
-                return chosenFraction;
+                return chosenPercentage;
             }
         }
 

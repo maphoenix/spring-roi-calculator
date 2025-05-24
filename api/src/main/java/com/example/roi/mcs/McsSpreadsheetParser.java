@@ -37,24 +37,37 @@ public class McsSpreadsheetParser {
     private static final DataFormatter DATA_FORMATTER = new DataFormatter();
 
     public enum OccupancyType {
-        HOME_ALL_DAY("Home all day", "home_all_day"),
-        OUT_DURING_DAY("Out during the day", "out_during_day"),
-        IN_HALF_DAY("In half the day", "in_half_day");
+        HOME_ALL_DAY("Home all day", 1, 5.0, "Household is typically occupied throughout the day"),
+        OUT_DURING_DAY("Out during the day", 2, 0.0, "Household is typically unoccupied during daytime hours"),
+        IN_HALF_DAY("In half the day", 3, 2.5, "Household is typically occupied for approximately half of the daytime hours"),
+        HYBRID("Hybrid", 4, 2.5, "Household has a flexible occupancy pattern defaulting to half day");
 
         private final String displayName;
-        private final String jsonKey;
+        private final int id;
+        private final double days;
+        private final String description;
 
-        OccupancyType(String displayName, String jsonKey) {
+        OccupancyType(String displayName, int id, double days, String description) {
             this.displayName = displayName;
-            this.jsonKey = jsonKey;
+            this.id = id;
+            this.days = days;
+            this.description = description;
         }
 
         public String getDisplayName() {
             return displayName;
         }
 
-        public String getJsonKey() {
-            return jsonKey;
+        public int getId() {
+            return id;
+        }
+
+        public double getDays() {
+            return days;
+        }
+
+        public String getDescription() {
+            return description;
         }
 
         public static OccupancyType fromDisplayName(String name) {
@@ -88,6 +101,40 @@ public class McsSpreadsheetParser {
         band.pvMin = rangeStart;
         band.pvMax = rangeEnd;
         band.pvGenerationRange = String.format("%d-%d", rangeStart, rangeEnd);
+    }
+
+    /**
+     * Helper method to parse consumption range and extract min/max values
+     * @param consumptionLabel Format: "Annual consumption: X,XXX kWh to Y,YYY kWh"
+     * @return int[] with [min, max] values or null if parsing fails
+     */
+    public static int[] parseConsumptionRange(String consumptionLabel) {
+        try {
+            if (!consumptionLabel.startsWith("Annual consumption:") || !consumptionLabel.contains("kWh to")) {
+                return null;
+            }
+            
+            // Extract the range part after "Annual consumption: "
+            String range = consumptionLabel.split("Annual consumption: ")[1];
+            
+            // Split into min and max parts
+            String[] parts = range.split(" kWh to ");
+            if (parts.length != 2 || !parts[1].endsWith(" kWh")) {
+                return null;
+            }
+            
+            // Remove commas and convert to integers
+            String minStr = parts[0].replace(",", "").trim();
+            String maxStr = parts[1].replace(" kWh", "").replace(",", "").trim();
+            
+            int min = Integer.parseInt(minStr);
+            int max = Integer.parseInt(maxStr);
+            
+            return new int[] {min, max};
+        } catch (Exception e) {
+            System.err.println("Failed to parse consumption range: " + consumptionLabel);
+            return null;
+        }
     }
 
     private static String formatConsumptionLabel(String range) {
@@ -380,8 +427,24 @@ public class McsSpreadsheetParser {
             
             // Create JSON output
             ObjectNode blockNode = M.createObjectNode();
-            blockNode.put("occupancy", occ);
-            blockNode.put("consumption", consLabel);
+            
+            // Create occupancy object
+            ObjectNode occupancyNode = M.createObjectNode();
+            OccupancyType occType = OccupancyType.fromDisplayName(occ);
+            occupancyNode.put("id", occType.getId());
+            occupancyNode.put("type", occType.getDisplayName());
+            occupancyNode.put("description", occType.getDescription());
+            occupancyNode.put("days", occType.getDays());
+            blockNode.set("occupancy", occupancyNode);
+            
+            // Create annual_consumption object
+            ObjectNode annualConsumption = M.createObjectNode();
+            int[] consumptionRange = parseConsumptionRange(consLabel);
+            if (consumptionRange != null) {
+                annualConsumption.put("min", consumptionRange[0]);
+                annualConsumption.put("max", consumptionRange[1]);
+            }
+            blockNode.set("annual_consumption", annualConsumption);
             
             ArrayNode batteryArray = M.createArrayNode();
             // Sort battery sizes numerically
@@ -402,8 +465,9 @@ public class McsSpreadsheetParser {
                 for (Map.Entry<String, Double> entry : band.fractionsByBatteryKwh.entrySet()) {
                     ObjectNode batteryNode = M.createObjectNode();
                     batteryNode.put("size", entry.getKey());
-                    // Store the percentage value directly from the map
-                    batteryNode.put("pv_generated_percentage", entry.getValue());
+                    // Convert fraction to percentage and round to 1 decimal place
+                    double percentage = Math.round(entry.getValue() * 1000.0) / 10.0;
+                    batteryNode.put("pv_generated_percentage", percentage);
                     batteriesArray.add(batteryNode);
                 }
                 bandNode.set("batteries", batteriesArray);
@@ -447,7 +511,7 @@ public class McsSpreadsheetParser {
             ObjectNode typeNode = occupancyNodes.get(type);
             ArrayNode consumptionArray = consumptionArrays.get(type);
             typeNode.set("consumption_ranges", consumptionArray);
-            root.set(type.getJsonKey(), typeNode);
+            root.set(String.valueOf(type.getId()), typeNode);
         }
         
         // Write JSON with pretty printing
