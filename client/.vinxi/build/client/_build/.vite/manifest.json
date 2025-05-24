@@ -1,0 +1,37 @@
+{
+  "/Users/jamesaphoenix/Desktop/projects/mark/spring-roi-calculator/client/app/styles/app.css": {
+    "file": "assets/app-Db7ar2RL.css",
+    "src": "/Users/jamesaphoenix/Desktop/projects/mark/spring-roi-calculator/client/app/styles/app.css"
+  },
+  "_client-BJp3mD8-.js": {
+    "file": "assets/client-BJp3mD8-.js",
+    "name": "client",
+    "dynamicImports": [
+      "app/routes/index.tsx?tsr-split=component"
+    ],
+    "css": [
+      "assets/app-Db7ar2RL.css"
+    ],
+    "assets": [
+      "assets/app-Db7ar2RL.css"
+    ]
+  },
+  "app/routes/index.tsx?tsr-split=component": {
+    "file": "assets/index-bgPH_apl.js",
+    "name": "index",
+    "src": "app/routes/index.tsx?tsr-split=component",
+    "isDynamicEntry": true,
+    "imports": [
+      "_client-BJp3mD8-.js"
+    ]
+  },
+  "virtual:$vinxi/handler/client": {
+    "file": "assets/client-Dz4qfxa4.js",
+    "name": "client",
+    "src": "virtual:$vinxi/handler/client",
+    "isEntry": true,
+    "imports": [
+      "_client-BJp3mD8-.js"
+    ]
+  }
+}

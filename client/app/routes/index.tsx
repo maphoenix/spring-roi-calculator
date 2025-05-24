@@ -37,12 +37,11 @@ const combinedSearchParamsSchema = z.object({
     ])
     .optional(),
   hasEv: z.enum(["yes", "no"]).optional(),
-  isHome: z.enum(["yes", "no"]).optional(),
   needsFinance: z.enum(["yes", "no"]).optional(),
   // Main form params (use zod transforms for types)
-  batterySize: z.coerce.number().min(0).optional(),
-  solarSize: z.coerce.number().min(0).optional(),
-  usage: z.coerce.number().min(100).optional(),
+  batterySize: z.coerce.number().min(0).max(20).optional(),
+  solarSize: z.coerce.number().min(1.5).max(20).optional(),
+  usage: z.coerce.number().min(1500).max(20000).optional(),
   solarPanelDirection: z
     .enum([
       "north",
@@ -56,7 +55,7 @@ const combinedSearchParamsSchema = z.object({
     ])
     .optional(),
   haveOrWillGetEv: z.coerce.boolean().optional(),
-  homeOccupancyDuringWorkHours: z.coerce.boolean().optional(),
+  homeOccupancyDuringWorkHours: z.coerce.number().min(1).max(5).optional(),
   needFinance: z.coerce.boolean().optional(), // Main form param version
 });
 
@@ -67,11 +66,11 @@ type CombinedSearchParams = z.infer<typeof combinedSearchParamsSchema>;
 const defaultFormState: SolarRoiCalculatorParams = {
   solarPanelDirection: "south", // Use hyphenated for internal state
   haveOrWillGetEv: false,
-  homeOccupancyDuringWorkHours: true,
+  homeOccupancyDuringWorkHours: 3, // Level 3 = Sometimes home (middle value of 1-5 scale)
   needFinance: false,
-  batterySize: 10,
-  usage: 4500,
-  solarSize: 5,
+  batterySize: 10, // Within new range 0-20 kWh
+  usage: 4500, // Within new range 1500-20000 kWh
+  solarSize: 5, // Within new range 1.5-20 kW
 };
 
 export const Route = createFileRoute("/")({
@@ -97,7 +96,7 @@ const mapGuideParamsToFormState = (
     // Map houseSize to solarSize
     mapping.solarSize =
       params.houseSize === "small"
-        ? 2.0
+        ? 1.5
         : params.houseSize === "medium"
           ? 3.2
           : 4.8;
@@ -115,9 +114,9 @@ const mapGuideParamsToFormState = (
     mapping.haveOrWillGetEv = params.hasEv === "yes";
   }
 
-  // Map isHome to homeOccupancyDuringWorkHours (boolean)
-  if (params.isHome !== undefined) {
-    mapping.homeOccupancyDuringWorkHours = params.isHome === "yes";
+  // Map homeOccupancyDuringWorkHours directly (guide now uses numeric 1-5)
+  if (params.homeOccupancyDuringWorkHours !== undefined) {
+    mapping.homeOccupancyDuringWorkHours = params.homeOccupancyDuringWorkHours;
   }
 
   // Map needsFinance (guide) to needFinance (form) (boolean)
@@ -182,13 +181,7 @@ const deriveStateFromParams = (
   // Check for the presence of *any* parameter defined in the guide section of the schema
   const hasGuideParams = Object.keys(searchParams).some(
     (key) =>
-      [
-        "houseSize",
-        "roofDirection",
-        "hasEv",
-        "isHome",
-        "needsFinance",
-      ].includes(key) &&
+      ["houseSize", "roofDirection", "hasEv", "needsFinance"].includes(key) &&
       searchParams[key as keyof CombinedSearchParams] !== undefined
   );
 

@@ -93,12 +93,16 @@ const steps: Step[] = [
     ],
   },
   {
-    id: "isHome",
+    id: "homeOccupancyDuringWorkHours",
     title: "Home Occupancy",
-    question: "Is someone usually home during weekday work hours (9am-5pm)?",
+    question:
+      "How many days per week is someone home during work hours (9am-5pm)?",
     options: [
-      { value: "yes", label: "Yes" },
-      { value: "no", label: "No" },
+      { value: "1", label: "1" },
+      { value: "2", label: "2" },
+      { value: "3", label: "3" },
+      { value: "4", label: "4" },
+      { value: "5", label: "5" },
     ],
   },
   {
@@ -328,7 +332,13 @@ export function SimplifiedGuide({ onComplete }: SimplifiedGuideProps) {
                 />
               ) : (
                 <div
-                  className={`grid grid-cols-1 gap-4 ${step.id === "houseSize" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-3"}`}
+                  className={`grid grid-cols-1 gap-4 ${
+                    step.id === "houseSize"
+                      ? "sm:grid-cols-2 lg:grid-cols-3"
+                      : step.id === "homeOccupancyDuringWorkHours"
+                        ? "sm:grid-cols-2 lg:grid-cols-5"
+                        : "sm:grid-cols-3"
+                  }`}
                 >
                   {step.options.map((option) => {
                     const isSelected = answers[step.id] === option.value;
