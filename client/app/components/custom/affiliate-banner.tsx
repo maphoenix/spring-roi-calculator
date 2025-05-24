@@ -13,16 +13,12 @@ import { ExternalLink } from "lucide-react";
 
 const affiliateLinks = [
   {
-    name: "James' Link", // Your link
-    url: "https://share.octopus.energy/sky-hare-157", // Updated URL
-    description:
-      "Switch to Octopus Energy using this link and you'll both get £50 credit!", // Slightly generic description
+    name: "James' Link",
+    url: "https://share.octopus.energy/sky-hare-157",
   },
   {
-    name: "Dad's Link", // Your Dad's link
-    url: "https://share.octopus.energy/happy-run-144", // Updated URL
-    description:
-      "Switch to Octopus Energy via this link and we both get £50 credit!", // Slightly generic description
+    name: "Dad's Link",
+    url: "https://share.octopus.energy/happy-run-144",
   },
 ];
 
@@ -39,17 +35,14 @@ export function AffiliateBanner() {
     <Card className="bg-gradient-to-r from-purple-100 via-pink-100 to-red-100 border-purple-200 overflow-hidden">
       <CardHeader className="text-center pt-6 pb-3">
         <CardTitle className="text-xl font-bold text-purple-800">
-          Switch & Save £50!
+          £50 for You, £50 for Us!
         </CardTitle>
         <CardDescription className="text-purple-700 text-sm px-4">
-          Considering solar? Pair it with Octopus Energy's smart tariffs for
-          maximum savings.
+          Considering solar? Switch to Octopus Energy through our referral link
+          - we both get £50 credit!
         </CardDescription>
       </CardHeader>
       <CardContent className="text-center space-y-4 pb-6 px-6">
-        <p className="text-sm text-purple-600 italic">
-          {selectedLink.description}
-        </p>
         <Button
           asChild
           variant="default"

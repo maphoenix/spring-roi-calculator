@@ -233,10 +233,25 @@ const formStateToSearchParams = (
     .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
 };
 
+// Affiliate links for the top promotional message (same as AffiliateBanner)
+const affiliateLinks = [
+  {
+    name: "James' Link",
+    url: "https://share.octopus.energy/sky-hare-157",
+  },
+  {
+    name: "Dad's Link",
+    url: "https://share.octopus.energy/happy-run-144",
+  },
+];
+
 function IndexComponent() {
   const [results, setResults] = useState<RoiCalculationResponse | null>(null);
   const searchParams = Route.useSearch(); // Use the validated/typed search params from the router
   const navigate = useNavigate();
+
+  // Random affiliate link selection for top promotional message
+  const [selectedPromoLink, setSelectedPromoLink] = useState(affiliateLinks[0]);
 
   // Calculate initial state ONCE based on the search params present on mount
   // UseMemo ensures this doesn't re-run on every render, only if searchParams ref changes (which it shouldn't needlessly)
@@ -269,6 +284,12 @@ function IndexComponent() {
     showDashboard,
     setShowDashboard
   );
+
+  // Random selection for promotional link on component mount
+  useEffect(() => {
+    const randomIndex = Math.random() < 0.5 ? 0 : 1;
+    setSelectedPromoLink(affiliateLinks[randomIndex]);
+  }, []);
 
   // --- Debounced Navigation ---
   // This function updates the URL after a delay when form inputs change
@@ -463,6 +484,23 @@ function IndexComponent() {
 
   return (
     <div className="container mx-auto p-4 md:p-8">
+      {/* Top Left Promotional Message - Only show on chart page */}
+      {showDashboard && (
+        <div className="flex justify-start mb-4">
+          <a
+            href={selectedPromoLink.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer hover:from-purple-100 hover:to-purple-150"
+          >
+            <p className="text-xs font-medium text-purple-800">
+              💡 <span className="font-semibold">£50 for you, £50 for us!</span>{" "}
+              Switch to Octopus Energy now
+            </p>
+          </a>
+        </div>
+      )}
+
       {!showDashboard ? (
         <motion.div
           key="guide"
@@ -552,6 +590,11 @@ function IndexComponent() {
                           <Loader2 className="h-4 w-4 animate-spin text-primary/80" />
                         </>
                       )} */}
+                      <div className="text-center mb-3">
+                        <p className="text-sm text-muted-foreground">
+                          We're working to get you the best deal with Octopus
+                        </p>
+                      </div>
                       <h2 className="text-xl font-semibold mb-4 text-center">
                         Cumulative Savings Over Time
                       </h2>

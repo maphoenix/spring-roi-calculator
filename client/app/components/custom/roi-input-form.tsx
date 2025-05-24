@@ -186,77 +186,116 @@ export function RoiInputForm({
             <div className="text-sm font-semibold text-center text-muted-foreground pt-2">
               Toggle On/Off Core Features
             </div>
-            <div className="flex flex-row space-x-2 justify-between items-center pb-4 border-b sm:flex-row sm:space-x-4 sm:justify-around sm:space-y-0">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={isSolarEnabled ? "default" : "outline"}
-                    onClick={() => handleToggleSolar(!isSolarEnabled)}
-                    className={`cursor-pointer transition-colors flex-grow sm:flex-grow-0 sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 ${
-                      isSolarEnabled
-                        ? "bg-green-500 hover:bg-green-600 text-white"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    <Sun className="h-6 w-6" />
-                    <span className="text-xs font-medium">Solar</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Toggle Solar System {isSolarEnabled ? "Off" : "On"}</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={isBatteryEnabled ? "default" : "outline"}
-                    onClick={() => handleToggleBattery(!isBatteryEnabled)}
-                    className={`cursor-pointer transition-colors flex-grow sm:flex-grow-0 sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 ${
-                      isBatteryEnabled
-                        ? "bg-blue-500 hover:bg-blue-600 text-white"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    <BatteryCharging className="h-6 w-6" />
-                    <span className="text-xs font-medium">Battery</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    Toggle Battery Storage {isBatteryEnabled ? "Off" : "On"}
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={formState.haveOrWillGetEv ? "default" : "outline"}
-                    onClick={() =>
-                      handleSwitchChange(
-                        "haveOrWillGetEv",
-                        !formState.haveOrWillGetEv
-                      )
-                    }
-                    className={`cursor-pointer transition-colors flex-grow sm:flex-grow-0 sm:w-24 h-14 md:h-16 flex flex-col items-center justify-center space-y-1 ${
-                      formState.haveOrWillGetEv
-                        ? "bg-purple-500 hover:bg-purple-600 text-white"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    <Car className="h-6 w-6" />
-                    <span className="text-xs font-medium">EV</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>
-                    {formState.haveOrWillGetEv ? "Disable" : "Enable"} EV
-                    Presence
-                  </p>
-                  <p className="text-xs max-w-xs text-center pt-1">
-                    Indicate if you have or plan to get an Electric Vehicle.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
+            <div className="space-y-4 pb-4 border-b">
+              {/* Solar Toggle */}
+              <div className="flex items-center justify-between space-x-2">
+                <div className="flex items-center space-x-2">
+                  <Sun
+                    className={`h-5 w-5 ${isSolarEnabled ? "text-green-500" : "text-muted-foreground"}`}
+                  />
+                  <div className="flex items-center space-x-1">
+                    <Label htmlFor="solar-toggle">Solar System</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 p-0"
+                          type="button"
+                        >
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          Toggle Solar System {isSolarEnabled ? "Off" : "On"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+                <Switch
+                  id="solar-toggle"
+                  checked={isSolarEnabled}
+                  onCheckedChange={handleToggleSolar}
+                />
+              </div>
+
+              {/* Battery Toggle */}
+              <div className="flex items-center justify-between space-x-2">
+                <div className="flex items-center space-x-2">
+                  <BatteryCharging
+                    className={`h-5 w-5 ${isBatteryEnabled ? "text-blue-500" : "text-muted-foreground"}`}
+                  />
+                  <div className="flex items-center space-x-1">
+                    <Label htmlFor="battery-toggle">Battery Storage</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 p-0"
+                          type="button"
+                        >
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          Toggle Battery Storage{" "}
+                          {isBatteryEnabled ? "Off" : "On"}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+                <Switch
+                  id="battery-toggle"
+                  checked={isBatteryEnabled}
+                  onCheckedChange={handleToggleBattery}
+                />
+              </div>
+
+              {/* EV Toggle */}
+              <div className="flex items-center justify-between space-x-2">
+                <div className="flex items-center space-x-2">
+                  <Car
+                    className={`h-5 w-5 ${formState.haveOrWillGetEv ? "text-purple-500" : "text-muted-foreground"}`}
+                  />
+                  <div className="flex items-center space-x-1">
+                    <Label htmlFor="ev-toggle">Electric Vehicle</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 p-0"
+                          type="button"
+                        >
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          {formState.haveOrWillGetEv ? "Disable" : "Enable"} EV
+                          Presence
+                        </p>
+                        <p className="text-xs max-w-xs text-center pt-1">
+                          Indicate if you have or plan to get an Electric
+                          Vehicle.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+                <Switch
+                  id="ev-toggle"
+                  checked={formState.haveOrWillGetEv}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange("haveOrWillGetEv", checked)
+                  }
+                />
+              </div>
             </div>
 
             <AnimatePresence>

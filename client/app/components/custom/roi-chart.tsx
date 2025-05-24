@@ -78,6 +78,11 @@ export function RoiChart({ chartData }: RoiChartProps) {
             tickMargin={8}
             fontSize={14}
             name="Year"
+            label={{
+              value: "Years",
+              position: "insideBottom",
+              offset: -5,
+            }}
           />
           <YAxis
             tickFormatter={formatCurrency}
