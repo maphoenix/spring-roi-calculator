@@ -25,7 +25,7 @@ public class RoiRequest {
 
     private CardinalDirection solarPanelDirection;
     private boolean haveOrWillGetEv;
-    private boolean homeOccupancyDuringWorkHours;
+    private int homeOccupancyDuringWorkHours = 5; // Default to 5 (home all day)
     private boolean needFinance;
     private double batterySize = 17.5;
     private double usage = 4000;
@@ -54,11 +54,14 @@ public class RoiRequest {
     }
 
     @JsonProperty("homeOccupancyDuringWorkHours")
-    public boolean isHomeOccupancyDuringWorkHours() {
+    public int getHomeOccupancyDuringWorkHours() {
         return homeOccupancyDuringWorkHours;
     }
 
-    public void setHomeOccupancyDuringWorkHours(boolean homeOccupancyDuringWorkHours) {
+    public void setHomeOccupancyDuringWorkHours(int homeOccupancyDuringWorkHours) {
+        if (homeOccupancyDuringWorkHours < 1 || homeOccupancyDuringWorkHours > 5) {
+            throw new IllegalArgumentException("Home occupancy during work hours must be between 1 and 5 (days), got: " + homeOccupancyDuringWorkHours);
+        }
         this.homeOccupancyDuringWorkHours = homeOccupancyDuringWorkHours;
     }
 
@@ -109,7 +112,7 @@ public class RoiRequest {
         return "RoiRequest{" +
                 "solarPanelDirection=" + getSolarPanelDirection() +
                 ", haveOrWillGetEv=" + isHaveOrWillGetEv() +
-                ", homeOccupancyDuringWorkHours=" + isHomeOccupancyDuringWorkHours() +
+                ", homeOccupancyDuringWorkHours=" + getHomeOccupancyDuringWorkHours() +
                 ", needFinance=" + isNeedFinance() +
                 ", solarSize=" + getSolarSize() +
                 ", batterySize=" + getBatterySize() +

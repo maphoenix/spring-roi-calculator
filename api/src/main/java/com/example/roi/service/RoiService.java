@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.roi.SolarInfo;
 import com.example.roi.YearCalculationResult;
+import com.example.roi.mcs.McsLookup;
 import com.example.roi.model.MonthlySavings;
 import com.example.roi.model.PaybackPeriod;
 import com.example.roi.model.RoiCalculationResponse;
@@ -35,11 +36,7 @@ public class RoiService {
 
     // Constants for calculations
     private static final double BATTERY_USABLE_PERCENTAGE = 0.90;  // 90% of battery is usable
-    private static final double SOLAR_SELF_USE_PERCENTAGE = 0.50;  // 50% of solar is used directly
-    private static final double SOLAR_EXPORT_PERCENTAGE = 0.50;    // 50% of solar is exported
-    private static final double AT_HOME_SOLAR_EXPORT_PERCENTAGE = 0.30;    // 30% of solar is exported
-    private static final double AT_HOME_SOLAR_SELF_USE_PERCENTAGE = 0.70;  // 70% of solar is used directly
-
+    
     // Initial cost estimates (could be parameterized in future versions)
     private static final double SOLAR_GENERATION_FACTOR = 850.0;   // kWh per kW of solar annually
     private static final double BATTERY_EFFICIENCY = 0.85;         // 85% round-trip efficiency
@@ -52,6 +49,20 @@ public class RoiService {
 
     @Autowired
     private TariffService tariffService;
+    
+    private McsLookup mcsLookup;
+    
+    // Initialize McsLookup with the CSV data
+    public RoiService() {
+        try {
+            // Load the MCS lookup data from CSV file in resources
+            String csvPath = getClass().getClassLoader().getResource("mcs/mcs_synthetic_dataset.csv").getPath();
+            this.mcsLookup = new McsLookup(csvPath);
+        } catch (Exception e) {
+            logger.warn("Failed to load MCS lookup data, falling back to simple calculations: {}", e.getMessage());
+            this.mcsLookup = null;
+        }
+    }
 
     /**
      * Calculate battery degradation factor for a specific year Based on the
@@ -116,7 +127,7 @@ public class RoiService {
 
         // Step 1: Extract and prepare input parameters
         boolean isBatterySelected = request.getBatterySize() > 0;
-        boolean isHomeOccupancyDuringWorkHours = request.isHomeOccupancyDuringWorkHours();
+        int occupancyDays = request.getHomeOccupancyDuringWorkHours();
 
         // Step 2: Calculate initial system cost
         double initialCost = calculateInitialCost(request);
@@ -127,7 +138,7 @@ public class RoiService {
         double usableBatteryMaxCapacity = request.getBatterySize() * BATTERY_USABLE_PERCENTAGE;
 
         // Step 4: Calculate solar generation, self-use, and export
-        SolarInfo solarInfo = calculateSolarInfo(request, isHomeOccupancyDuringWorkHours);
+        SolarInfo solarInfo = calculateSolarInfo(request, occupancyDays);
         logSolarInfo(solarInfo);
 
         // Step 5: Select the appropriate tariff for calculation
@@ -221,20 +232,43 @@ public class RoiService {
         );
     }
 
-    private SolarInfo calculateSolarInfo(RoiRequest request, boolean isHomeOccupancyDuringWorkHours) {
+    private SolarInfo calculateSolarInfo(RoiRequest request, int occupancyDays) {
         double actualSolarGeneration = SOLAR_GENERATION_FACTOR * getSolarDirectionOutputMultiplier(request.getSolarPanelDirection());
         double solarGen = request.getSolarSize() * actualSolarGeneration;
         double solarUsed;
         double solarExport;
-        if (isHomeOccupancyDuringWorkHours) {
-            solarUsed = solarGen * AT_HOME_SOLAR_SELF_USE_PERCENTAGE;
-            solarExport = solarGen * AT_HOME_SOLAR_EXPORT_PERCENTAGE;
+        
+        // Use MCS lookup table for accurate self-consumption percentage
+        if (mcsLookup != null) {
+            try {
+                // Get self-consumption percentage from MCS data
+                double selfConsumptionPercentage = mcsLookup.lookup(
+                    occupancyDays,
+                    request.getUsage(),  // annual consumption
+                    solarGen,           // PV generation
+                    request.getBatterySize()
+                );
+                
+                // Convert percentage to decimal and calculate actual values
+                double selfConsumptionRatio = selfConsumptionPercentage / 100.0;
+                solarUsed = solarGen * selfConsumptionRatio;
+                solarExport = solarGen - solarUsed;
+                
+                logger.debug("MCS Lookup: occupancyDays={}, consumption={}kWh, pvGen={}kWh, battery={}kWh -> {}% self-consumption", 
+                    occupancyDays, request.getUsage(), solarGen, request.getBatterySize(), selfConsumptionPercentage);
+                
+            } catch (Exception e) {
+                logger.warn("Failed to use MCS lookup, falling back to simple calculations: {}", e.getMessage());
+                throw new IllegalStateException("The data is not in range for the MCS lookup");
+            }
         } else {
-            solarUsed = solarGen * SOLAR_SELF_USE_PERCENTAGE;
-            solarExport = solarGen * SOLAR_EXPORT_PERCENTAGE;
+            // MCS lookup is required for accurate calculations
+            throw new IllegalStateException("The data is not in range for the MCS lookup");
         }
+        
         return new SolarInfo(solarGen, solarUsed, solarExport);
     }
+
 
     private YearCalculationResult calculateYear(int year, boolean isBatterySelected, double usableBatteryMaxCapacity, RoiRequest request, Tariff selectedTariff, SolarInfo solarInfo) {
         double batterySavings = 0.0;
