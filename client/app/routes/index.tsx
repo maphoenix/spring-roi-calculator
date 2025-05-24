@@ -483,188 +483,257 @@ function IndexComponent() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      {/* Top Left Promotional Message - Only show on chart page */}
-      {showDashboard && (
-        <div className="flex justify-start mb-4">
-          <a
-            href={selectedPromoLink.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer hover:from-purple-100 hover:to-purple-150"
+    <div className="bg-gradient-to-br from-background via-purple-50/10 to-violet-50/15">
+      <div className="container mx-auto p-4 md:p-8">
+        {/* Top Left Promotional Message - Only show on chart page */}
+        {showDashboard && (
+          <div className="flex justify-start mb-4">
+            <a
+              href={selectedPromoLink.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer hover:from-purple-100 hover:to-purple-150"
+            >
+              <p className="text-xs font-medium text-purple-800">
+                💡{" "}
+                <span className="font-semibold">£50 for you, £50 for us!</span>{" "}
+                Switch to Octopus Energy now
+              </p>
+            </a>
+          </div>
+        )}
+
+        {!showDashboard ? (
+          <motion.div
+            key="guide"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.5 }}
+            className="min-h-[80vh] flex items-center justify-center"
           >
-            <p className="text-xs font-medium text-purple-800">
-              💡 <span className="font-semibold">£50 for you, £50 for us!</span>{" "}
-              Switch to Octopus Energy now
-            </p>
-          </a>
-        </div>
-      )}
-
-      {!showDashboard ? (
-        <motion.div
-          key="guide"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-2xl mx-auto" // Center the guide
-        >
-          {/* Pass initial data if available from params (though usually guide starts clean) */}
-          <SimplifiedGuide onComplete={handleGuideComplete} />
-        </motion.div>
-      ) : (
-        <>
-          {/* Go Back Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleGoBack} // Use the new handler
-            className="mb-4 -ml-2 flex items-center space-x-2 text-muted-foreground hover:text-foreground" // Adjust margin for alignment
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span>Start Over</span>
-          </Button>
-
-          {/* Main layout grid - swap the order of columns on desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Results Column - Now on left for desktop */}
-            <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
-              {/* Loading/Initial State for Results Area */}
-              {/* Show specific loading message only when mutation is actually pending */}
-              {mutation.isPending && (
-                <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin inline mr-2" />
-                  Calculating...
-                </div>
-              )}
-              {/* Show initial prompt if not loading and no results/error */}
-              {!mutation.isPending && !results && !mutation.isError && (
-                <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
-                  Adjust the inputs on the right to calculate your potential
-                  savings.
-                </div>
-              )}
-              {/* Error state */}
-              {!mutation.isPending && mutation.isError && (
-                <div className="text-center text-red-600 py-10 min-h-[100px] flex flex-col items-center justify-center">
-                  <span>Calculation failed.</span>
-                  <span className="text-sm text-red-500 mt-1">
-                    {mutation.error?.message ||
-                      "Please check inputs or try again."}
-                  </span>
-                </div>
-              )}
-
-              {/* Results Display (only if results exist and not pending) */}
-              {!mutation.isPending && results && (
-                <>
-                  {/* ScoreCards */}
-                  <>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                      <ScoreCard
-                        title="Total System Cost"
-                        value={formatCurrency(results.totalCost.amount)}
-                      />
-                      <ScoreCard
-                        title="Yearly Savings"
-                        value={formatCurrency(results.yearlySavings.amount)}
-                      />
-                      <ScoreCard
-                        title="Payback Period"
-                        value={`${results.paybackPeriod.years < 0 ? ">15" : results.paybackPeriod.years} Years`}
-                      />
-                      <ScoreCard
-                        title={`ROI (${results.roiPercentage.periodYears} Years)`}
-                        value={`${results.roiPercentage.percentage.toFixed(1)}%`}
-                      />
-                    </div>
-                  </>
-
-                  {/* Chart */}
-                  <>
-                    <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm relative">
-                      {/* Debounce Indicator Overlay (Subtle) */}
-                      {/* {isDebouncing && (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin text-primary/80" />
-                        </>
-                      )} */}
-                      <div className="text-center mb-3">
-                        <p className="text-sm text-muted-foreground">
-                          We're working to get you the best deal with Octopus
-                        </p>
-                      </div>
-                      <h2 className="text-xl font-semibold mb-4 text-center">
-                        Cumulative Savings Over Time
-                      </h2>
-                      <div className="mt-2 md:mt-0 relative">
-                        {/* Ensure chartData is passed correctly */}
-                        <RoiChart chartData={results.roiChartData} />
-                        {results.roiChartData.breakEvenYear !== null &&
-                          results.roiChartData.breakEvenYear > 0 && (
-                            <p className="text-sm text-muted-foreground mt-4 text-center">
-                              Estimated break-even point around year{" "}
-                              {results.roiChartData.breakEvenYear}.
-                            </p>
-                          )}
-                        {results.roiChartData.breakEvenYear !== null &&
-                          results.roiChartData.breakEvenYear < 0 && (
-                            <p className="text-sm text-muted-foreground mt-4 text-center">
-                              Payback period may be longer than the system
-                              lifespan ({results.roiPercentage.periodYears}{" "}
-                              years).
-                            </p>
-                          )}
-                      </div>
-                    </div>
-                  </>
-                </>
-              )}
+            <div className="w-full max-w-3xl mx-auto px-4">
+              {/* Pass initial data if available from params (though usually guide starts clean) */}
+              <SimplifiedGuide onComplete={handleGuideComplete} />
             </div>
+          </motion.div>
+        ) : (
+          <>
+            {/* Go Back Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleGoBack} // Use the new handler
+              className="mb-4 -ml-2 flex items-center space-x-2 text-muted-foreground hover:text-foreground" // Adjust margin for alignment
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Start Over</span>
+            </Button>
 
-            {/* Inputs Column - Now on right for desktop */}
-            <div className="lg:col-span-1 space-y-6 order-1 lg:order-2">
-              {/* Pass the local state which is kept in sync with URL */}
-              <RoiInputForm
-                formData={currentFormData}
-                onFormDataChange={handleFormDataChange}
-              />
-              {/* Share Button */}
-              <Button
-                onClick={handleShare}
-                disabled={shareStatus === "copied" || !results} // Disable if no results to share
-                className="w-full"
-                variant="outline" // Less prominent than main action
-              >
-                <Share2Icon className="mr-2 h-4 w-4" />
-                {shareStatus === "copied"
-                  ? "Link Copied!"
-                  : "Share Calculation"}
-              </Button>
-              <div className="hidden md:block">
-                <AffiliateBanner />
+            {/* Main layout grid - swap the order of columns on desktop */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Results Column - Now on left for desktop */}
+              <div className="lg:col-span-2 space-y-8 order-2 lg:order-1">
+                {/* Loading/Initial State for Results Area */}
+                {/* Show specific loading message only when mutation is actually pending */}
+                {mutation.isPending && (
+                  <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin inline mr-2" />
+                    Calculating...
+                  </div>
+                )}
+                {/* Show initial prompt if not loading and no results/error */}
+                {!mutation.isPending && !results && !mutation.isError && (
+                  <div className="text-center text-muted-foreground py-10 min-h-[100px] flex items-center justify-center">
+                    Adjust the inputs on the right to calculate your potential
+                    savings.
+                  </div>
+                )}
+                {/* Error state */}
+                {!mutation.isPending && mutation.isError && (
+                  <div className="text-center text-red-600 py-10 min-h-[100px] flex flex-col items-center justify-center">
+                    <span>Calculation failed.</span>
+                    <span className="text-sm text-red-500 mt-1">
+                      {mutation.error?.message ||
+                        "Please check inputs or try again."}
+                    </span>
+                  </div>
+                )}
+
+                {/* Results Display (only if results exist and not pending) */}
+                {!mutation.isPending && results && (
+                  <>
+                    {/* ScoreCards */}
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <ScoreCard
+                          title="Total System Cost"
+                          value={formatCurrency(results.totalCost.amount)}
+                        />
+                        <ScoreCard
+                          title="Yearly Savings"
+                          value={formatCurrency(results.yearlySavings.amount)}
+                        />
+                        <ScoreCard
+                          title="Payback Period"
+                          value={`${results.paybackPeriod.years < 0 ? ">15" : results.paybackPeriod.years} Years`}
+                        />
+                        <ScoreCard
+                          title={`ROI (${results.roiPercentage.periodYears} Years)`}
+                          value={`${results.roiPercentage.percentage.toFixed(1)}%`}
+                        />
+                      </div>
+                    </>
+
+                    {/* Chart */}
+                    <>
+                      <div className="bg-card p-4 md:p-6 rounded-lg shadow-sm relative">
+                        {/* Debounce Indicator Overlay (Subtle) */}
+                        {/* {isDebouncing && (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin text-primary/80" />
+                          </>
+                        )} */}
+                        <div className="text-center mb-3">
+                          <p className="text-sm text-muted-foreground">
+                            We're working to get you the best deal with Octopus
+                          </p>
+                        </div>
+                        <h2 className="text-xl font-semibold mb-2 text-center">
+                          Cumulative Savings Over Time
+                        </h2>
+                        <div className="text-center mb-4">
+                          <p className="text-sm text-green-600 font-medium flex items-center justify-center space-x-1">
+                            <span>🌳</span>
+                            <span>
+                              Every person that switches to solar saves 100
+                              trees per year
+                            </span>
+                          </p>
+                        </div>
+                        <div className="mt-2 md:mt-0 relative">
+                          {/* Ensure chartData is passed correctly */}
+                          <RoiChart chartData={results.roiChartData} />
+                          {results.roiChartData.breakEvenYear !== null &&
+                            results.roiChartData.breakEvenYear > 0 && (
+                              <p className="text-sm text-muted-foreground mt-4 text-center">
+                                Estimated break-even point around year{" "}
+                                {results.roiChartData.breakEvenYear}.
+                              </p>
+                            )}
+                          {results.roiChartData.breakEvenYear !== null &&
+                            results.roiChartData.breakEvenYear < 0 && (
+                              <p className="text-sm text-muted-foreground mt-4 text-center">
+                                Payback period may be longer than the system
+                                lifespan ({results.roiPercentage.periodYears}{" "}
+                                years).
+                              </p>
+                            )}
+                        </div>
+
+                        {/* Inspirational Environmental Quote Section */}
+                        <div className="mt-8 p-6 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 border border-green-200 rounded-lg shadow-sm">
+                          <div className="text-center">
+                            <div className="text-2xl mb-2">🌱</div>
+                            <blockquote className="text-lg font-medium text-green-800 italic mb-2">
+                              {(() => {
+                                const quotes = [
+                                  "Every person that switches to solar saves 100 trees per year",
+                                  "Solar power: turning sunshine into savings and sustainability",
+                                  "A solar panel today keeps carbon emissions away",
+                                  "Choose solar, choose a cleaner future for your children",
+                                  "Every kilowatt of solar power is a victory for the planet",
+                                  "Solar energy: the sun never sends you a bill",
+                                  "Going solar isn't just smart economics, it's environmental leadership",
+                                  "Your roof can be your power plant and the planet's ally",
+                                  "Solar power: where financial savings meet environmental impact",
+                                  "Every solar installation is a vote for a sustainable future",
+                                  "Be the hero your electric bill never thought you could be",
+                                  "Solar panels: because the sun works for free and never asks for a raise",
+                                  "Stop renting energy, start owning sunshine",
+                                  "Your roof is sitting on a goldmine of free electricity",
+                                  "Solar power: making your neighbors jealous since day one",
+                                  "Why pay for electricity when the sun is literally throwing energy at your house?",
+                                  "Solar panels turn your roof into a money-printing machine",
+                                  "Every solar panel installed is another nail in fossil fuel's coffin",
+                                  "Be so solar-powered that your electric company misses you",
+                                  "Solar energy: the ultimate flex on your utility company",
+                                  "Your future self will thank you for going solar today",
+                                  "Solar power: because paying for electricity is so last century",
+                                  "Join the solar revolution - your wallet and the planet will love you",
+                                  "Solar panels: the gift that keeps on giving... for 25+ years",
+                                  "Stop feeding the grid, start owning your power",
+                                  "Solar energy: turning your biggest expense into your best investment",
+                                  "Be the change you want to see on your electricity bill",
+                                  "Solar power: because free energy is the best energy",
+                                  "Your roof called - it wants to make you money",
+                                  "Solar panels: the smartest thing you can put on your roof besides a brain",
+                                  "Going solar: the only time buying the sun actually makes sense",
+                                  "Solar energy: making environmentalists and accountants happy since forever",
+                                  "Why rent from the sun when you can own a piece of it?",
+                                  "Solar power: the ultimate renewable relationship",
+                                  "Your carbon footprint just called - it wants to go on a diet",
+                                ];
+                                return quotes[
+                                  Math.floor(Math.random() * quotes.length)
+                                ];
+                              })()}
+                            </blockquote>
+                            <p className="text-sm text-green-600 font-semibold">
+                              🌍 Make a difference with every ray of sunshine
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  </>
+                )}
+              </div>
+
+              {/* Inputs Column - Now on right for desktop */}
+              <div className="lg:col-span-1 space-y-6 order-1 lg:order-2">
+                {/* Pass the local state which is kept in sync with URL */}
+                <RoiInputForm
+                  formData={currentFormData}
+                  onFormDataChange={handleFormDataChange}
+                />
+                {/* Share Button */}
+                <Button
+                  onClick={handleShare}
+                  disabled={shareStatus === "copied" || !results} // Disable if no results to share
+                  className="w-full"
+                  variant="outline" // Less prominent than main action
+                >
+                  <Share2Icon className="mr-2 h-4 w-4" />
+                  {shareStatus === "copied"
+                    ? "Link Copied!"
+                    : "Share Calculation"}
+                </Button>
+                <div className="hidden md:block">
+                  <AffiliateBanner />
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        )}
 
-      {/* Footer */}
-      <div className="md:hidden mt-8">
-        <AffiliateBanner />
+        {/* Footer */}
+        <div className="md:hidden mt-8">
+          <AffiliateBanner />
+        </div>
+
+        {/* Show footer only when dashboard is visible and has results */}
+        {showDashboard && results && !mutation.isPending && (
+          <footer className="mt-12 pt-6 border-t border-border/40">
+            <p className="text-center text-sm text-muted-foreground">
+              Disclaimer: This calculator provides approximate estimations based
+              on standard assumptions and the inputs provided. Results should be
+              used as a guide only and supplemented with professional
+              assessments.
+            </p>
+          </footer>
+        )}
       </div>
-
-      {/* Show footer only when dashboard is visible and has results */}
-      {showDashboard && results && !mutation.isPending && (
-        <footer className="mt-12 pt-6 border-t border-border/40">
-          <p className="text-center text-sm text-muted-foreground">
-            Disclaimer: This calculator provides approximate estimations based
-            on standard assumptions and the inputs provided. Results should be
-            used as a guide only and supplemented with professional assessments.
-          </p>
-        </footer>
-      )}
     </div>
   );
 }

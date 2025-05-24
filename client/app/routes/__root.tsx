@@ -5,9 +5,12 @@ import {
   createRootRoute,
   HeadContent,
   Scripts,
+  useSearch,
 } from "@tanstack/react-router";
 import "../styles/app.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { NavigationBar } from "@/components/custom/navigation-bar";
+import { Footer } from "@/components/custom/footer";
 
 import appCss from "@/styles/app.css?url";
 
@@ -42,9 +45,32 @@ function RootComponent() {
   return (
     <RootDocument>
       <QueryClientProvider client={queryClient}>
-        <Outlet />
+        <LayoutWrapper>
+          <Outlet />
+        </LayoutWrapper>
       </QueryClientProvider>
     </RootDocument>
+  );
+}
+
+function LayoutWrapper({ children }: { children: ReactNode }) {
+  const searchParams = useSearch({ from: "__root__" });
+
+  // Determine if we're in guide mode (no relevant search params) or dashboard mode (has search params)
+  // This matches the logic in the IndexComponent
+  const isInGuideMode = !Object.keys(searchParams).length;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Show navigation only when not in guide mode */}
+      {!isInGuideMode && <NavigationBar />}
+
+      {/* Main content */}
+      <main className={isInGuideMode ? "flex-1" : "flex-1"}>{children}</main>
+
+      {/* Show footer only when not in guide mode */}
+      {!isInGuideMode && <Footer />}
+    </div>
   );
 }
 

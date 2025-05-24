@@ -524,7 +524,7 @@ export function RoiInputForm({
                     </Tooltip>
                   </div>
                   <span className="text-sm font-medium text-muted-foreground">
-                    Level {formState.homeOccupancyDuringWorkHours}
+                    {formState.homeOccupancyDuringWorkHours} days per week
                   </span>
                 </div>
                 <Slider
