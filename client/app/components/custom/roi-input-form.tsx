@@ -2,13 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
@@ -19,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type {
   SolarRoiCalculatorParams,
   CardinalDirection,
@@ -45,11 +38,12 @@ const directions: CardinalDirection[] = [
 ];
 
 const AVERAGE_PANEL_KW = 0.4;
-const MIN_SOLAR_SIZE = 2;
+const MIN_SOLAR_SIZE = 1.5;
 const MAX_SOLAR_SIZE = 20;
-const MIN_USAGE = 1000;
+const MIN_USAGE = 1500;
 const MAX_USAGE = 20000;
-const MAX_BATTERY_SIZE = 50;
+const MIN_BATTERY_SIZE = 0;
+const MAX_BATTERY_SIZE = 20;
 
 interface RoiInputFormProps {
   formData: SolarRoiCalculatorParams;
@@ -73,10 +67,8 @@ export function RoiInputForm({
     formData.solarSize > 0 ? formData.solarSize : MIN_SOLAR_SIZE
   );
   const [prevBatterySize, setPrevBatterySize] = useState<number>(
-    formData.batterySize > 0 ? formData.batterySize : 2.5
+    formData.batterySize > 0 ? formData.batterySize : 1
   );
-
-  const [batteryIncrement, setBatteryIncrement] = useState<number>(2.5);
 
   useEffect(() => {
     setFormState(formData);
@@ -89,12 +81,13 @@ export function RoiInputForm({
   }, [formData]);
 
   const minBatterySize = useMemo(
-    () => (isBatteryEnabled ? batteryIncrement : 0),
-    [isBatteryEnabled, batteryIncrement]
+    () => (isBatteryEnabled ? 1 : 0),
+    [isBatteryEnabled]
   );
 
   const solarSliderStep = 0.1;
-  const batterySliderStep = batteryIncrement;
+  const batterySliderStep = 1;
+  const usageSliderStep = 500;
 
   const handleSliderChange = (
     field: keyof SolarRoiCalculatorParams,
@@ -156,7 +149,7 @@ export function RoiInputForm({
 
   const handleToggleBattery = (enabled: boolean) => {
     setIsBatteryEnabled(enabled);
-    const newMinBatterySize = batteryIncrement;
+    const newMinBatterySize = 1;
     const sizeToRestore =
       prevBatterySize >= newMinBatterySize
         ? prevBatterySize
@@ -172,29 +165,6 @@ export function RoiInputForm({
 
     if (enabled && prevBatterySize < newMinBatterySize) {
       setPrevBatterySize(newMinBatterySize);
-    }
-  };
-
-  const handleBatteryIncrementChange = (value: string) => {
-    const increment = parseFloat(value);
-    setBatteryIncrement(increment);
-
-    if (isBatteryEnabled) {
-      const newMin = increment;
-      if (formState.batterySize < newMin) {
-        const newState = {
-          ...formState,
-          batterySize: newMin,
-        };
-        setFormState(newState);
-        onFormDataChange(newState);
-        setPrevBatterySize(newMin);
-      } else {
-      }
-    } else {
-      if (prevBatterySize < increment) {
-        setPrevBatterySize(increment);
-      }
     }
   };
 
@@ -359,10 +329,10 @@ export function RoiInputForm({
                   transition={{ duration: 0.3 }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-4 pt-4 mb-2">
-                    <div className="space-y-2">
+                  <div className="space-y-2 pt-4 mb-2">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-1">
-                        <Label>Battery Increment Size</Label>
+                        <Label htmlFor="battery">Battery Size (kWh)</Label>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -376,69 +346,29 @@ export function RoiInputForm({
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
                             <p className="text-center">
-                              Select the typical size increment for battery
-                              modules (e.g., 2.5kWh or 3.6kWh blocks).
+                              The storage capacity of your battery system in
+                              kilowatt-hours. Larger batteries store more excess
+                              solar energy for later use.
                             </p>
                           </TooltipContent>
                         </Tooltip>
                       </div>
-                      <RadioGroup
-                        defaultValue={String(batteryIncrement)}
-                        onValueChange={handleBatteryIncrementChange}
-                        className="flex space-x-4"
-                      >
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="2.5" id="inc-2.5" />
-                          <Label htmlFor="inc-2.5">2.5 kWh</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="3.6" id="inc-3.6" />
-                          <Label htmlFor="inc-3.6">3.6 kWh</Label>
-                        </div>
-                      </RadioGroup>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        {formState.batterySize.toFixed(1)} kWh
+                      </span>
                     </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-1">
-                          <Label htmlFor="battery">Battery Size (kWh)</Label>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-4 w-4 p-0"
-                                type="button"
-                              >
-                                <Info className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">
-                              <p className="text-center">
-                                The storage capacity of your battery system in
-                                kilowatt-hours. Larger batteries store more
-                                excess solar energy for later use.
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </div>
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {formState.batterySize.toFixed(1)} kWh
-                        </span>
-                      </div>
-                      <Slider
-                        id="battery"
-                        min={minBatterySize}
-                        max={MAX_BATTERY_SIZE}
-                        step={batterySliderStep}
-                        value={[formState.batterySize]}
-                        onValueChange={(value) =>
-                          handleSliderChange("batterySize", value)
-                        }
-                        disabled={!isBatteryEnabled}
-                        className="mt-2"
-                      />
-                    </div>
+                    <Slider
+                      id="battery"
+                      min={MIN_BATTERY_SIZE}
+                      max={MAX_BATTERY_SIZE}
+                      step={batterySliderStep}
+                      value={[formState.batterySize]}
+                      onValueChange={(value) =>
+                        handleSliderChange("batterySize", value)
+                      }
+                      disabled={!isBatteryEnabled}
+                      className="mt-2"
+                    />
                   </div>
                 </motion.div>
               )}
@@ -522,7 +452,7 @@ export function RoiInputForm({
                 id="usage"
                 min={MIN_USAGE}
                 max={MAX_USAGE}
-                step={100}
+                step={usageSliderStep}
                 value={[formState.usage]}
                 onValueChange={(value) => handleSliderChange("usage", value)}
                 className="mt-2"
@@ -530,36 +460,49 @@ export function RoiInputForm({
             </div>
 
             <div className="space-y-3 pt-4 border-t">
-              <div className="flex items-center justify-between space-x-2">
-                <div className="flex items-center space-x-1">
-                  <Label htmlFor="occupancy">Home During Work Hours?</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-4 w-4 p-0"
-                        type="button"
-                      >
-                        <Info className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p className="text-center">
-                        Being home during the day increases daytime energy
-                        usage, allowing for more direct consumption of solar
-                        power.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1">
+                    <Label htmlFor="occupancy">Home Occupancy Level</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-4 w-4 p-0"
+                          type="button"
+                        >
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-center">
+                          How often someone is home during work hours (9am-5pm).
+                          Higher levels mean more daytime energy usage and
+                          direct consumption of solar power.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Level {formState.homeOccupancyDuringWorkHours}
+                  </span>
                 </div>
-                <Switch
+                <Slider
                   id="occupancy"
-                  checked={formState.homeOccupancyDuringWorkHours}
-                  onCheckedChange={(checked) =>
-                    handleSwitchChange("homeOccupancyDuringWorkHours", checked)
+                  min={1}
+                  max={5}
+                  step={1}
+                  value={[formState.homeOccupancyDuringWorkHours]}
+                  onValueChange={(value) =>
+                    handleSliderChange("homeOccupancyDuringWorkHours", value)
                   }
+                  className="mt-2"
                 />
+                <div className="flex justify-between text-xs text-muted-foreground px-1">
+                  <span>Never home</span>
+                  <span>Always home</span>
+                </div>
               </div>
 
               <div className="flex items-center justify-between space-x-2">

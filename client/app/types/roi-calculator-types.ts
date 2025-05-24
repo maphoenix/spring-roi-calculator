@@ -27,9 +27,10 @@ export interface SolarRoiCalculatorParams {
   haveOrWillGetEv: boolean;
 
   /**
-   * Whether someone is typically at home during standard work hours (9am-5pm)
+   * Home occupancy level during the day (1-5 scale)
+   * 1 = Never home, 2 = Rarely home, 3 = Sometimes home, 4 = Often home, 5 = Always home
    */
-  homeOccupancyDuringWorkHours: boolean;
+  homeOccupancyDuringWorkHours: number;
 
   /**
    * Whether financing is needed for the solar installation
@@ -58,7 +59,7 @@ export interface SolarRoiCalculatorParams {
  * const params: SolarRoiCalculatorParams = {
  *   solarPanelDirection: "south",
  *   haveOrWillGetEv: true,
- *   homeOccupancyDuringWorkHours: false,
+ *   homeOccupancyDuringWorkHours: 3,
  *   needFinance: true,
  *   batterySize: 13.5,
  *   usage: 5000,
