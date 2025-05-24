@@ -189,3 +189,10 @@ The application models battery degradation with:
 - Year 15 as end-of-life for battery calculations
 
 This provides realistic ROI projections that account for the decreasing efficiency of battery systems over time.
+
+# MCS spreadsheet data
+## To create the JSON file 
+mvn exec:java -Dexec.mainClass="com.example.roi.mcs.McsSpreadsheetParser"
+
+To Load the JSON file 
+mvn exec:java -Dexec.mainClass="com.example.roi.mcs.McsSpreadsheetParser"
