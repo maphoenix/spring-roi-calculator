@@ -2,6 +2,7 @@
 *.class
 node_modules/
 **/**/*.bak
+api/test-roi-report.pdf
 
 # Log files
 *.log
