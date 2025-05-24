@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.roi.SolarInfo;
 import com.example.roi.YearCalculationResult;
-import com.example.roi.mcs.McsLookup;
+import com.example.roi.mcs.McsLookupOptimized;
 import com.example.roi.model.MonthlySavings;
 import com.example.roi.model.PaybackPeriod;
 import com.example.roi.model.RoiCalculationResponse;
@@ -50,14 +50,16 @@ public class RoiService {
     @Autowired
     private TariffService tariffService;
     
-    private McsLookup mcsLookup;
+    private McsLookupOptimized mcsLookup;
     
-    // Initialize McsLookup with the CSV data
+    // Initialize McsLookupOptimized with cached data (falls back to CSV if cache unavailable)
     public RoiService() {
         try {
-            // Load the MCS lookup data from CSV file in resources
+            // Load the MCS lookup data using optimized cache-first approach
             String csvPath = getClass().getClassLoader().getResource("mcs/mcs_synthetic_dataset.csv").getPath();
-            this.mcsLookup = new McsLookup(csvPath);
+            String cachePath = getClass().getClassLoader().getResource("mcs/mcs_synthetic_dataset.cache").getPath();
+            this.mcsLookup = new McsLookupOptimized(cachePath, csvPath);
+            logger.info("Successfully initialized MCS lookup with optimized caching");
         } catch (Exception e) {
             logger.warn("Failed to load MCS lookup data, falling back to simple calculations: {}", e.getMessage());
             this.mcsLookup = null;

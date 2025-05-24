@@ -3,6 +3,14 @@
 node_modules/
 **/**/*.bak
 api/test-roi-report.pdf
+api/src/main/resources/mcs/mcs_synthetic_dataset.cache
+
+# Large data files
+api/src/main/resources/mcs/*.csv
+api/src/main/resources/mcs/*.csv.gz
+api/src/main/resources/mcs/*.cache
+api/src/main/resources/mcs/*.xlsx
+api/src/main/resources/mcs/~$*
 
 # Log files
 *.log
