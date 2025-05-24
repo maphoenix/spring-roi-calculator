@@ -442,7 +442,7 @@ def main():
     
     # Load and prepare data
     print("📊 Loading and preparing data...")
-    df = load_and_flatten_mcs_data('api/src/main/resources/mcs/mcs_self_consumption.json')
+    df = load_and_flatten_mcs_data('../api/src/main/resources/mcs/mcs_self_consumption.json')
     
     # Prepare features and target
     feature_columns = ['occupancy_days_normalized', 'annual_consumption', 'pv_generation', 'battery_size']
