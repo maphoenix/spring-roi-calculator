@@ -12,12 +12,19 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as IndexImport } from './routes/index'
+import { Route as SolarRoiIndexImport } from './routes/solar-roi/index'
 
 // Create/Update Routes
 
 const IndexRoute = IndexImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const SolarRoiIndexRoute = SolarRoiIndexImport.update({
+  id: '/solar-roi/',
+  path: '/solar-roi/',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -32,6 +39,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexImport
       parentRoute: typeof rootRoute
     }
+    '/solar-roi/': {
+      id: '/solar-roi/'
+      path: '/solar-roi'
+      fullPath: '/solar-roi'
+      preLoaderRoute: typeof SolarRoiIndexImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -39,32 +53,37 @@ declare module '@tanstack/react-router' {
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/solar-roi': typeof SolarRoiIndexRoute
 }
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/solar-roi': typeof SolarRoiIndexRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/solar-roi/': typeof SolarRoiIndexRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/solar-roi'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/solar-roi'
+  id: '__root__' | '/' | '/solar-roi/'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SolarRoiIndexRoute: typeof SolarRoiIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SolarRoiIndexRoute: SolarRoiIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -77,11 +96,15 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/"
+        "/",
+        "/solar-roi/"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/solar-roi/": {
+      "filePath": "solar-roi/index.tsx"
     }
   }
 }

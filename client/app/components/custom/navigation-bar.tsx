@@ -30,7 +30,7 @@ const NavigationBar: React.FC = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           <Link
-            to="/"
+            to="/solar-roi"
             className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
           >
             Calculator
@@ -46,7 +46,7 @@ const NavigationBar: React.FC = () => {
         {/* CTA Button - Desktop */}
         <div className="hidden md:flex">
           <Button asChild className="shadow-sm">
-            <Link to="/">Get Started</Link>
+            <Link to="/solar-roi">Get Started</Link>
           </Button>
         </div>
 
@@ -72,7 +72,7 @@ const NavigationBar: React.FC = () => {
           <div className="container py-4">
             <nav className="flex flex-col space-y-4">
               <Link
-                to="/"
+                to="/solar-roi"
                 className="flex items-center space-x-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -89,7 +89,10 @@ const NavigationBar: React.FC = () => {
               </Link>
               <div className="pt-2">
                 <Button asChild className="w-full shadow-sm">
-                  <Link to="/" onClick={() => setMobileMenuOpen(false)}>
+                  <Link
+                    to="/solar-roi"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
                     Get Started
                   </Link>
                 </Button>
